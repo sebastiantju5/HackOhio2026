@@ -12,7 +12,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv(Path(__file__).with_name(".env"))
 
+from trips import trips
+
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
+app.register_blueprint(trips)
 CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql:///locallens")
@@ -22,7 +26,7 @@ DEMO_PASSWORD = "neighborhood"
 
 
 def connect():
-    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=3)
 
 
 def init_db():
@@ -77,18 +81,13 @@ def account_for_token(conn, token):
 @app.route("/")
 def home():
     return jsonify({
-        "message": "LocalLens API is running!"
+        "message": "Weatherway trip planning API is running."
     })
 
 
 @app.route("/api/health")
 def health():
-    try:
-        with connect() as conn:
-            conn.execute("SELECT 1")
-    except psycopg.Error:
-        return jsonify({"status": "ok", "database": "unavailable"}), 503
-    return jsonify({"status": "ok", "database": "ok"})
+    return jsonify({"status": "ok", "planner": "available", "database": "optional; used by account endpoints only"})
 
 
 @app.post("/api/auth/login")
@@ -186,8 +185,14 @@ def logout():
     return jsonify({"ok": True})
 
 
-init_db()
-
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5001, use_reloader=False)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--init-db", action="store_true", help="Initialize optional account tables and exit")
+    args = parser.parse_args()
+    if args.init_db:
+        init_db()
+        print("Account database initialized.")
+    else:
+        app.run(debug=os.environ.get("FLASK_DEBUG") == "1", host="127.0.0.1", port=5001, use_reloader=False)
