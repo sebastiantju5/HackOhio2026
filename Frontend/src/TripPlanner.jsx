@@ -37,7 +37,7 @@ function Metric({ label, children }) {
   return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
 }
 
-export default function TripPlanner({ onAccount }) {
+export default function TripPlanner({ session, onAccount, onLogout }) {
   const [form, setForm] = useState(defaults)
   const [analysis, setAnalysis] = useState(null)
   const [routeId, setRouteId] = useState(null)
@@ -101,7 +101,7 @@ export default function TripPlanner({ onAccount }) {
   const candidates = analysis?.candidates.filter(item => item.routeId === routeId) || []
   const candidate = candidates[departureIndex] || candidates[0]
   const pointIndex = Math.min(selectedPoint, (route?.checkpoints.length || 1) - 1)
-  const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation.candidateId)
+  const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
   const source = analysis?.sources.find(item => item.model)
   const baseline = analysis?.candidates.find(item => item.routeId === analysis.routes[0].id)
 
@@ -111,40 +111,228 @@ export default function TripPlanner({ onAccount }) {
     setDepartureIndex(analysis.candidates.filter(item => item.routeId === recommended.routeId).findIndex(item => item.id === recommended.id))
   }
 
-  return <div className="planner-app">
-    <header className="planner-header">
-      <a className="wordmark" href="#main"><span className="brand-symbol" aria-hidden="true">w.</span>weatherway<span className="brand-rule" /><span className="brand-caption">A little foresight goes a long way.</span></a>
-      <div className="header-actions"><span className="edition">HACKOHIO / 2026</span><button className="account-button" onClick={onAccount}>Account ↗</button></div>
-    </header>
-    <main id="main" className="planner-layout">
-      <aside className="planning-sidebar">
-        <div className="sidebar-intro"><span className="mini-label">THE ROAD AHEAD, REIMAGINED</span><h1>Good timing.{' '}<br /><em>Better travels.</em></h1><p>The weather moves.{' '}<br />Plan your drive around it.</p></div>
-        <form onSubmit={submit} className="trip-form">
-          <fieldset className="mode-picker" disabled={busy}><legend className="sr-only">Data mode</legend><button type="button" aria-pressed={form.mode === 'demo'} onClick={() => changeMode('demo')}>Simulated scenario</button><button type="button" aria-pressed={form.mode === 'live'} onClick={() => changeMode('live')}>Live forecast</button></fieldset>
-          <div className="location-fields"><label><span className="field-label"><i className="origin-dot" />Starting from</span><select value={form.origin} disabled={form.mode === 'demo' || busy} onChange={event => update('origin', event.target.value)}>{PLACES.map(place => <option key={place.name}>{place.name}</option>)}</select></label><span className="location-connector" aria-hidden="true" /><label><span className="field-label"><i className="destination-dot" />Heading to</span><select value={form.destination} disabled={form.mode === 'demo' || busy} onChange={event => update('destination', event.target.value)}>{PLACES.map(place => <option key={place.name}>{place.name}</option>)}</select></label></div>
-          <div className="departure-inputs"><label><span className="field-label">Earliest departure</span><input type="datetime-local" required value={form.start} disabled={busy} onChange={event => update('start', event.target.value)} /></label><label><span className="field-label">Latest departure</span><input type="datetime-local" required value={form.end} disabled={busy} onChange={event => update('end', event.target.value)} /></label></div>
-          <p className="input-hint">Eastern time · departure window up to 2 hours</p>
-          <label className="alternatives-check"><input type="checkbox" checked={form.alternatives} disabled={busy} onChange={event => update('alternatives', event.target.checked)} />Compare alternative routes</label>
-          <button className="analyze-button" type="submit" disabled={busy}>{busy ? <><span className="spinner" />Reading the road ahead…</> : <>Find my weather window <span aria-hidden="true">↗</span></>}</button>
-          {error && <p className="planner-error" role="alert">{error}</p>}
-          {dirty && analysis && <p className="pending-note" role="status">Inputs changed. Analyze to update the results shown.</p>}
+  return (
+    <div className="planner-app">
+      {/* Floating Capsule Navbar */}
+      <div className="capsule-wrapper">
+        <nav className="capsule-nav">
+          <a className="capsule-brand" href="#main">
+            <div className="capsule-dot">w</div>
+            <span>WeatherWay Dispatch</span>
+          </a>
+
+          <div className="capsule-links">
+            <span className="capsule-tag-ohio">OHIO CORRIDORS</span>
+            <span className="edition-badge">HACKOHIO / 2026</span>
+          </div>
+
+          <div className="capsule-user-section">
+            {session?.user ? (
+              <div className="user-capsule-badge">
+                <button className="user-profile-button" onClick={onAccount} title={`Signed in as ${session.user.email}`}>
+                  <span className="user-avatar-pip">
+                    {(session.user.name || 'User').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="user-name-txt">{(session.user.name || 'User').split(' ')[0]}</span>
+                </button>
+                <button className="user-logout-button" onClick={onLogout} title="Sign out">
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <button className="capsule-auth-btn" onClick={onAccount}>
+                Sign in ↗
+              </button>
+            )}
+          </div>
+        </nav>
+      </div>
+
+      {/* Editorial Hero Stage */}
+      <header className="hero-stage">
+        <div className="hero-kicker">OHIO HIGHWAY WEATHER CORRIDORS</div>
+        <h1 className="hero-headline">
+          Your clearest drive starts with <em>better timing.</em>
+        </h1>
+        <p className="hero-sub">
+          Pairing your arrival coordinates with high-resolution NOAA HRRR point forecasts across Ohio highways.
+        </p>
+
+        {/* Clean Integrated Trip Capsule Form */}
+        <form onSubmit={submit} className="trip-capsule-form">
+          <fieldset className="capsule-mode-picker" disabled={busy}>
+            <legend className="sr-only">Data mode</legend>
+            <button type="button" aria-pressed={form.mode === 'demo'} onClick={() => changeMode('demo')}>
+              Simulated
+            </button>
+            <button type="button" aria-pressed={form.mode === 'live'} onClick={() => changeMode('live')}>
+              Live HRRR
+            </button>
+          </fieldset>
+
+          <div className="capsule-locations">
+            <label className="capsule-input-pair">
+              <span className="field-hint">From</span>
+              <select value={form.origin} disabled={form.mode === 'demo' || busy} onChange={event => update('origin', event.target.value)}>
+                {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
+              </select>
+            </label>
+
+            <span className="capsule-divider" aria-hidden="true">→</span>
+
+            <label className="capsule-input-pair">
+              <span className="field-hint">To</span>
+              <select value={form.destination} disabled={form.mode === 'demo' || busy} onChange={event => update('destination', event.target.value)}>
+                {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <div className="capsule-times">
+            <label className="capsule-time-input">
+              <span className="field-hint">Leave window</span>
+              <input type="datetime-local" required value={form.start} disabled={busy} onChange={event => update('start', event.target.value)} />
+            </label>
+            <span className="capsule-dash">–</span>
+            <label className="capsule-time-input">
+              <span className="field-hint">Until</span>
+              <input type="datetime-local" required value={form.end} disabled={busy} onChange={event => update('end', event.target.value)} />
+            </label>
+          </div>
+
+          <label className="capsule-alt-check">
+            <input type="checkbox" checked={form.alternatives} disabled={busy} onChange={event => update('alternatives', event.target.checked)} />
+            <span>Alternatives</span>
+          </label>
+
+          <button className="capsule-submit-btn" type="submit" disabled={busy}>
+            {busy ? (
+              <span className="spinner" />
+            ) : (
+              <>
+                <span>Find Window</span> <span aria-hidden="true">→</span>
+              </>
+            )}
+          </button>
         </form>
-        <div className="sidebar-note"><span className="note-symbol" aria-hidden="true">↗</span><div><strong>Weather where you’ll be.</strong><p>Each checkpoint pairs your arrival time with the forecast at that location.</p></div></div>
-        <div className="provider-note"><span className="mini-label">UNDER THE HOOD</span><p>{form.mode === 'demo' ? 'Synthetic weather · illustrative Ohio corridors. No live conditions or navigation geometry.' : `${routingProvider} routing + Open-Meteo HRRR. ${routingProvider === 'OSRM' ? 'Public demo routing; no traffic data.' : 'Traffic-aware baseline; fixed across departures.'}`}</p></div>
-      </aside>
-      <section className="journey-workspace" aria-busy={busy}>
-        <div className="journey-topline"><div><span className="mini-label">YOUR WEATHER CORRIDOR</span><h2>{analysis ? <>{analysis.origin.name.split(',')[0]} <span className="route-arrow">→</span> {analysis.destination.name.split(',')[0]}</> : 'Explore the road ahead'}</h2></div><span className={`data-mode-label ${analysis?.dataMode === 'live' ? 'live' : ''}`}><i />{analysis?.dataMode === 'live' ? 'LIVE FORECAST' : 'SIMULATED SCENARIO'}</span></div>
-        {analysis && <div className="route-options" aria-label="Choose route">{analysis.routes.map(item => <button type="button" key={item.id} aria-pressed={routeId === item.id} onClick={() => { setRouteId(item.id); setDepartureIndex(0); setSelectedPoint(0) }}><span className="route-choice-mark" /><strong>{item.name}</strong><span>{duration(item.durationSeconds)} · {miles(item.distanceMeters)} mi</span></button>)}</div>}
-        <div className="map-and-details"><RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} /><CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={candidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} /></div>
-        {candidate && <><div className="trip-metrics"><Metric label="On the road">{duration(route.durationSeconds)}</Metric><Metric label="Estimated arrival">{clock(candidate.arrival, analysis.timeZone)} <small>{day(candidate.arrival, analysis.timeZone)}</small></Metric><Metric label="Higher exposure">{Math.round(candidate.higherMinutes)} <small>min</small></Metric><Metric label="Forecast coverage">{candidate.complete ? 'Complete' : `${Math.round(candidate.unknownMinutes)} min unknown`}</Metric></div>
-          <DepartureScrubber candidates={candidates} selectedIndex={departureIndex} onChange={setDepartureIndex} recommendedId={analysis.recommendation.candidateId} timeZone={analysis.timeZone} />
-          <div className="recommendation" aria-live="polite"><span className="recommendation-symbol" aria-hidden="true">↗</span><div><span className="mini-label">{analysis.recommendation.allHigherExposure ? 'HIGHER EXPOSURE ACROSS THE WINDOW' : 'YOUR FORECAST WINDOW'}</span>{recommended ? <><h3>{clock(analysis.recommendation.windowStart, analysis.timeZone)}{analysis.recommendation.windowStart !== analysis.recommendation.windowEnd && `–${clock(analysis.recommendation.windowEnd, analysis.timeZone)}`} ET <span>· {analysis.routes.find(item => item.id === recommended.routeId).name}</span></h3><p>{Math.round(recommended.higherMinutes)} higher-exposure minutes, compared with {Math.round(baseline.higherMinutes)} at the earliest departure on the direct route. Arrive {clock(recommended.arrival, analysis.timeZone)} ET.{analysis.recommendation.timingSensitive && ' Sensitive to a ±15-minute change in arrival timing.'}</p></> : <p>{analysis.recommendation.reason}</p>}</div>{recommended && <button type="button" onClick={useRecommendation}>Explore this departure <span aria-hidden="true">→</span></button>}</div>
-          <details className="checkpoints-list"><summary>All {route.checkpoints.length} checkpoints <span>15-minute travel intervals + destination</span></summary><div className="checkpoint-buttons">{route.checkpoints.map((point, index) => <button type="button" key={point.id} className={candidate.checkpoints[index].level} aria-pressed={pointIndex === index} onClick={() => setSelectedPoint(index)}><span>{String(index + 1).padStart(2, '0')}</span><strong>{clock(candidate.checkpoints[index].arrival, analysis.timeZone)}</strong><small>Mile {miles(point.distanceMeters)} · {LEVELS[candidate.checkpoints[index].level].label}</small></button>)}</div></details>
-          <details className="methodology"><summary>How the comparison works</summary><p>{analysis.recommendation.reason}</p><ul>{analysis.limitations.map(item => <li key={item}>{item}</li>)}</ul><p>Demonstration thresholds: rain caution ≥1 mm/h, higher ≥7.5 mm/h; projected crosswind gust caution ≥25 km/h, higher ≥45 km/h; visibility caution below 3 km, higher below 1 km. Wet conditions with air temperature ≤2°C trigger possible freezing conditions. Unknown data cannot earn a clear label. Scoring: {analysis.scoringVersion}.</p><p>Each route interval uses the worse endpoint class. Exposure minutes are sampled estimates. Temperature and wind are matched to the returned forecast timestamp; precipitation is a preceding 15-minute accumulation.</p><p>{analysis.sources.filter(item => item.trafficNote).map(item => item.trafficNote).join(' ')}</p><p><a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noreferrer">Open-Meteo / NOAA data</a> · <a href="https://project-osrm.org/" target="_blank" rel="noreferrer">OSRM</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></p></details>
-        </>}
-        {!analysis && !busy && <div className="no-analysis"><h3>Your next drive starts here.</h3><p>Choose a departure window and analyze a trip. The simulated scenario works without external API keys.</p></div>}
-        <footer className="workspace-footer"><span>PLAN WITH PERSPECTIVE.</span><span>{analysis ? `Analyzed ${clock(analysis.generatedAt, analysis.timeZone)} ET · ${analysis.coverageStatus} coverage` : 'Weather at arrival. A clearer view ahead.'}</span></footer>
-      </section>
-    </main>
-  </div>
+
+        {error && <p className="planner-error-banner" role="alert">{error}</p>}
+        {dirty && analysis && <p className="pending-note-hero" role="status">Inputs changed. Click Find Window to re-evaluate.</p>}
+      </header>
+
+      {/* Main Unified Bone Card */}
+      <main id="main" className="main-stage-container">
+        <section className="unified-bone-card" aria-busy={busy}>
+          {/* Card Topbar */}
+          <div className="bone-card-header">
+            <div className="route-spec-heading">
+              <h2>{analysis ? <>{analysis.origin.name.split(',')[0]} <span className="route-arrow">→</span> {analysis.destination.name.split(',')[0]}</> : 'Explore the road ahead'}</h2>
+              <p>{route ? `${miles(route.distanceMeters)} miles · ${duration(route.durationSeconds)} travel time` : 'Select endpoints and evaluate arrival weather'}</p>
+            </div>
+
+            <div className="header-badges-wrap">
+              {recommended && (
+                <span className="pinned-pill-tag">Optimal: {clock(recommended.departure, analysis?.timeZone)} ET</span>
+              )}
+              <span className={`data-mode-tag ${analysis?.dataMode === 'live' ? 'live' : ''}`}>
+                <i />{analysis?.dataMode === 'live' ? 'LIVE FORECAST' : 'SIMULATED'}
+              </span>
+            </div>
+          </div>
+
+          {/* Alternative Routes Selector */}
+          {analysis && analysis.routes.length > 1 && (
+            <div className="route-options-bar" aria-label="Choose route">
+              {analysis.routes.map(item => (
+                <button type="button" key={item.id} aria-pressed={routeId === item.id} onClick={() => { setRouteId(item.id); setDepartureIndex(0); setSelectedPoint(0) }}>
+                  <span className="route-choice-dot" />
+                  <strong>{item.name}</strong>
+                  <span>{duration(item.durationSeconds)} · {miles(item.distanceMeters)} mi</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Map & Checkpoint Split */}
+          <div className="bone-split-layout">
+            <RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} />
+            <CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={candidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} />
+          </div>
+
+          {/* Metrics & Scrubber Details */}
+          {candidate && (
+            <>
+              <div className="bone-trip-metrics">
+                <Metric label="On the road">{duration(route.durationSeconds)}</Metric>
+                <Metric label="Estimated arrival">{clock(candidate.arrival, analysis.timeZone)} <small>{day(candidate.arrival, analysis.timeZone)}</small></Metric>
+                <Metric label="Higher exposure">{Math.round(candidate.higherMinutes)} <small>min</small></Metric>
+                <Metric label="Forecast coverage">{candidate.complete ? 'Complete' : `${Math.round(candidate.unknownMinutes)} min unknown`}</Metric>
+              </div>
+
+              <div className="bone-scrubber-section">
+                <DepartureScrubber candidates={candidates} selectedIndex={departureIndex} onChange={setDepartureIndex} recommendedId={analysis.recommendation?.candidateId} timeZone={analysis.timeZone} />
+
+                {/* Recommendation Banner */}
+                <div className="bone-rec-bar" aria-live="polite">
+                  <span className="rec-star-quiet" aria-hidden="true">★</span>
+                  <div className="rec-bar-content">
+                    <span className="rec-kicker">{analysis.recommendation?.allHigherExposure ? 'HIGHER EXPOSURE ACROSS WINDOW' : 'RECOMMENDED DEPARTURE WINDOW'}</span>
+                    {recommended ? (
+                      <>
+                        <h4>{clock(analysis.recommendation.windowStart, analysis.timeZone)}{analysis.recommendation.windowStart !== analysis.recommendation.windowEnd && `–${clock(analysis.recommendation.windowEnd, analysis.timeZone)}`} ET <span>· {analysis.routes.find(item => item.id === recommended.routeId)?.name}</span></h4>
+                        <p>{Math.round(recommended.higherMinutes)} higher-exposure minutes, compared with {Math.round(baseline?.higherMinutes || 0)} at the earliest departure on the direct route. Arrives {clock(recommended.arrival, analysis.timeZone)} ET.{analysis.recommendation.timingSensitive && ' Sensitive to a ±15-minute change in arrival timing.'}</p>
+                      </>
+                    ) : (
+                      <p>{analysis.recommendation?.reason}</p>
+                    )}
+                  </div>
+                  {recommended && (
+                    <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
+                      Explore this departure →
+                    </button>
+                  )}
+                </div>
+
+                {/* All Checkpoints Drawer */}
+                <details className="checkpoints-list-bone">
+                  <summary>All {route?.checkpoints.length || 0} checkpoints <span>15-minute travel intervals + destination</span></summary>
+                  <div className="checkpoint-buttons-grid">
+                    {route?.checkpoints.map((point, index) => (
+                      <button type="button" key={point.id} className={candidate.checkpoints[index]?.level} aria-pressed={pointIndex === index} onClick={() => setSelectedPoint(index)}>
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        <strong>{clock(candidate.checkpoints[index]?.arrival, analysis.timeZone)}</strong>
+                        <small>Mile {miles(point.distanceMeters)} · {LEVELS[candidate.checkpoints[index]?.level]?.label}</small>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+
+                {/* Methodology Details */}
+                <details className="methodology-bone">
+                  <summary>Methodology & Atmospheric Data Sources</summary>
+                  <p>{analysis.recommendation?.reason}</p>
+                  <ul>{analysis.limitations?.map(item => <li key={item}>{item}</li>)}</ul>
+                  <p>Demonstration thresholds: rain caution ≥1 mm/h, higher ≥7.5 mm/h; projected crosswind gust caution ≥25 km/h, higher ≥45 km/h; visibility caution below 3 km, higher below 1 km. Wet conditions with air temperature ≤2°C trigger possible freezing conditions. Unknown data cannot earn a clear label. Scoring: {analysis.scoringVersion}.</p>
+                  <p>{analysis.sources?.filter(item => item.trafficNote).map(item => item.trafficNote).join(' ')}</p>
+                  <p><a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noreferrer">Open-Meteo / NOAA HRRR</a> · <a href="https://project-osrm.org/" target="_blank" rel="noreferrer">OSRM Demo Routing</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></p>
+                </details>
+              </div>
+            </>
+          )}
+
+          {!analysis && !busy && (
+            <div className="no-analysis-pane">
+              <h3>Your next drive starts here.</h3>
+              <p>Choose a departure window and analyze a trip. The simulated scenario works without external API keys.</p>
+            </div>
+          )}
+
+          <footer className="bone-card-footer">
+            <span>WEATHER AT ARRIVAL · FORESIGHT FOR THE ROAD</span>
+            <span>{analysis ? `Analyzed ${clock(analysis.generatedAt, analysis.timeZone)} ET · ${analysis.coverageStatus} coverage` : `${routingProvider} routing + HRRR point forecasts`}</span>
+          </footer>
+        </section>
+      </main>
+    </div>
+  )
 }

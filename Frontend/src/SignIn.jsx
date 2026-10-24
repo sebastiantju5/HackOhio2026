@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import './SignIn.css'
 
 const DEMO = {
-  email: 'alex@locallens.app',
+  email: 'alex@weatherway.app',
   password: 'neighborhood',
 }
 
@@ -11,35 +11,6 @@ const EMPTY_FORM = {
   email: '',
   password: '',
   remember: true,
-}
-
-function readStoredSession() {
-  const raw = localStorage.getItem('locallens-session') || sessionStorage.getItem('locallens-session')
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
-function storeSession(session, remember) {
-  const raw = JSON.stringify(session)
-  localStorage.removeItem('locallens-session')
-  sessionStorage.removeItem('locallens-session')
-  const store = remember ? localStorage : sessionStorage
-  store.setItem('locallens-session', raw)
-}
-
-function clearSession() {
-  localStorage.removeItem('locallens-session')
-  sessionStorage.removeItem('locallens-session')
-}
-
-function savedSession() {
-  const stored = readStoredSession()
-  if (!stored?.token || !stored?.user?.email) return null
-  return stored
 }
 
 function validate(form, mode) {
@@ -56,43 +27,13 @@ function validate(form, mode) {
   return errors
 }
 
-export default function SignIn() {
+export default function SignIn({ session, onLogin, onLogout, onBack }) {
   const [mode, setMode] = useState('signin')
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [session, setSession] = useState(savedSession)
-
-  useEffect(() => {
-    const stored = readStoredSession()
-    if (!stored?.token) return
-
-    const controller = new AbortController()
-    fetch('/api/auth/me', {
-      headers: { Authorization: `Bearer ${stored.token}` },
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (readStoredSession()?.token !== stored.token) return
-        if (response.status === 401) {
-          clearSession()
-          setSession(null)
-          return
-        }
-        if (!response.ok) return
-        const data = await response.json()
-        if (!data?.user?.email) return
-        if (readStoredSession()?.token !== stored.token) return
-        setSession({ token: stored.token, user: data.user })
-      })
-      .catch((error) => {
-        if (error.name === 'AbortError') return
-      })
-
-    return () => controller.abort()
-  }, [])
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -145,185 +86,245 @@ export default function SignIn() {
         return
       }
       const nextSession = { token: data.token, user: data.user }
-      storeSession(nextSession, form.remember)
-      setSession(nextSession)
+      if (onLogin) {
+        onLogin(nextSession, form.remember)
+      }
       setForm(EMPTY_FORM)
     } catch {
-      setFormError('LocalLens can’t reach the server. Start the backend and try again.')
+      setFormError('Cannot reach the WeatherWay server. Ensure the backend and postgres database are running.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  async function signOut() {
-    const token = session?.token
-    setSession(null)
-    clearSession()
-    if (!token) return
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {})
-  }
-
   const isSignup = mode === 'signup'
+  const user = session?.user
 
   return (
     <main className="auth-page">
+      <button type="button" className="auth-back-nav" onClick={onBack}>
+        ← Back to trip planner
+      </button>
+
       <div className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <svg className="pixel-mark" viewBox="0 0 16 16" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M6 1h4v2h2v2h2v8H2V5h2V3h2V1zm1 2v2H5v8h6V5H9V3H7zm1 4h2v2H8V7z"
-            />
-          </svg>
-          <p>LocalLens</p>
-        </div>
-        <div className="swatches" aria-hidden="true">
-          <span className="swatch cream" />
-          <span className="swatch olive" />
-          <span className="swatch stone" />
-        </div>
-      </header>
-
-      <section className="auth-stage" aria-label="LocalLens">
-        <p className="eyebrow">HackOhio</p>
-        <h1>
-          <span>Local</span>
-          <span>Lens</span>
-        </h1>
-        <p className="stage-copy">
-          Sign in to find what’s nearby — the shops, events, and people that make a block feel like home.
-        </p>
-      </section>
-
-      <section className="auth-panel">
-        {session ? (
-          <div className="signed-in">
-            <p className="eyebrow">Signed in</p>
-            <h2>Welcome back, {(session.user.name || 'there').split(' ')[0]}.</h2>
-            <p className="panel-copy">You’re in as {session.user.email}.</p>
-            <button type="button" className="primary" onClick={signOut}>
-              Sign out
-            </button>
+        <header className="topbar">
+          <div className="brand" onClick={onBack} style={{ cursor: 'pointer' }}>
+            <span className="brand-symbol" aria-hidden="true">w.</span>
+            <div className="brand-names">
+              <strong>weatherway</strong>
+              <small>OHIO CORRIDOR DISPATCH</small>
+            </div>
           </div>
-        ) : (
-          <form className="auth-form" onSubmit={onSubmit} noValidate>
-            <p className="eyebrow">{isSignup ? 'Create account' : 'Sign in'}</p>
-            <h2>{isSignup ? 'Start looking closer.' : 'Welcome back.'}</h2>
-            <p className="panel-copy">
-              {isSignup
-                ? 'A name, an email, and a password is all it takes.'
-                : 'Use your LocalLens email and password to continue.'}
-            </p>
+          <div className="auth-edition">HACKOHIO / 2026</div>
+        </header>
 
-            {isSignup && (
+        <section className="auth-stage" aria-label="WeatherWay Intelligence">
+          <p className="eyebrow">Corridor Forecasting</p>
+          <h1>
+            <span>The road ahead,</span>
+            <em>clarified.</em>
+          </h1>
+          <p className="stage-copy">
+            Sign in to save your Ohio travel corridors, calibrate exposure alerts, and evaluate the safest departure window for your journeys.
+          </p>
+
+          <div className="auth-features">
+            <div className="auth-feature-item">
+              <span className="feature-dot" />
+              <div>
+                <strong>Point forecast synchronization</strong>
+                <p>Arrival-matched 15-minute weather along I-71, I-75, and I-90.</p>
+              </div>
+            </div>
+            <div className="auth-feature-item">
+              <span className="feature-dot" />
+              <div>
+                <strong>Personalized route windows</strong>
+                <p>Saved thresholds for rain intensity, crosswind gusts, and freeze risk.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="auth-panel">
+          {user ? (
+            <div className="signed-in-card">
+              <div className="signed-in-header">
+                <div className="user-avatar-large">
+                  {(user.name || 'User').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <p className="eyebrow">Authenticated Operator</p>
+                  <h2>Welcome back, {(user.name || 'there').split(' ')[0]}.</h2>
+                </div>
+              </div>
+
+              <div className="session-details">
+                <div className="detail-row">
+                  <span>Account Email</span>
+                  <strong>{user.email}</strong>
+                </div>
+                <div className="detail-row">
+                  <span>Profile Name</span>
+                  <strong>{user.name}</strong>
+                </div>
+                <div className="detail-row">
+                  <span>Database Session</span>
+                  <span className="status-live-tag">Active (PostgreSQL)</span>
+                </div>
+              </div>
+
+              <div className="signed-in-actions">
+                <button type="button" className="primary btn-return-planner" onClick={onBack}>
+                  ← Return to Trip Planner
+                </button>
+                <button type="button" className="secondary btn-signout" onClick={onLogout}>
+                  Sign out
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form className="auth-form" onSubmit={onSubmit} noValidate>
+              <div className="form-mode-tabs">
+                <button
+                  type="button"
+                  className={`tab-btn ${!isSignup ? 'active' : ''}`}
+                  onClick={() => switchMode('signin')}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  className={`tab-btn ${isSignup ? 'active' : ''}`}
+                  onClick={() => switchMode('signup')}
+                >
+                  Create Account
+                </button>
+              </div>
+
+              <div className="panel-intro">
+                <h2>{isSignup ? 'Create your profile.' : 'Welcome back.'}</h2>
+                <p className="panel-copy">
+                  {isSignup
+                    ? 'Enter your name, email, and password to start saving routes.'
+                    : 'Sign in to access your saved Ohio travel corridors.'}
+                </p>
+              </div>
+
+              {!isSignup && (
+                <div className="demo-callout">
+                  <div>
+                    <span className="demo-label">TEST DEMO ACCOUNT</span>
+                    <span className="demo-creds">{DEMO.email} · pass: {DEMO.password}</span>
+                  </div>
+                  <button type="button" className="demo-fill-btn" onClick={fillDemo}>
+                    Auto-fill
+                  </button>
+                </div>
+              )}
+
+              {isSignup && (
+                <label className="field">
+                  <span className="field-title">Full Name</span>
+                  <input
+                    name="name"
+                    autoComplete="name"
+                    placeholder="Alex Rivera"
+                    value={form.name}
+                    onChange={(event) => updateField('name', event.target.value)}
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? 'name-error' : undefined}
+                  />
+                  {errors.name && (
+                    <small id="name-error" className="field-error">
+                      {errors.name}
+                    </small>
+                  )}
+                </label>
+              )}
+
               <label className="field">
-                <span>Name</span>
+                <span className="field-title">Email Address</span>
                 <input
-                  name="name"
-                  autoComplete="name"
-                  value={form.name}
-                  onChange={(event) => updateField('name', event.target.value)}
-                  aria-invalid={Boolean(errors.name)}
-                  aria-describedby={errors.name ? 'name-error' : undefined}
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  placeholder="alex@weatherway.app"
+                  value={form.email}
+                  onChange={(event) => updateField('email', event.target.value)}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                 />
-                {errors.name && (
-                  <small id="name-error" className="field-error">
-                    {errors.name}
+                {errors.email && (
+                  <small id="email-error" className="field-error">
+                    {errors.email}
                   </small>
                 )}
               </label>
-            )}
 
-            <label className="field">
-              <span>Email</span>
-              <input
-                name="email"
-                type="email"
-                autoComplete="email"
-                inputMode="email"
-                value={form.email}
-                onChange={(event) => updateField('email', event.target.value)}
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-              />
-              {errors.email && (
-                <small id="email-error" className="field-error">
-                  {errors.email}
-                </small>
-              )}
-            </label>
+              <div className="field">
+                <span className="field-title">Password</span>
+                <div className="password-input-wrap">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete={isSignup ? 'new-password' : 'current-password'}
+                    placeholder="At least 8 characters"
+                    value={form.password}
+                    onChange={(event) => updateField('password', event.target.value)}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={errors.password ? 'password-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword((curr) => !curr)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {errors.password && (
+                  <small id="password-error" className="field-error">
+                    {errors.password}
+                  </small>
+                )}
+              </div>
 
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <span className="password-row">
+              <label className="remember-option">
                 <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete={isSignup ? 'new-password' : 'current-password'}
-                  value={form.password}
-                  onChange={(event) => updateField('password', event.target.value)}
-                  aria-invalid={Boolean(errors.password)}
-                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  type="checkbox"
+                  checked={form.remember}
+                  onChange={(event) => updateField('remember', event.target.checked)}
                 />
+                <span>Remember session on this computer</span>
+              </label>
+
+              {formError && (
+                <div className="form-error-alert" role="alert">
+                  {formError}
+                </div>
+              )}
+
+              <button type="submit" className="primary submit-btn" disabled={submitting}>
+                {submitting ? 'Authenticating…' : isSignup ? 'Create Account' : 'Sign In to WeatherWay'}
+              </button>
+
+              <p className="auth-switch-prompt">
+                {isSignup ? 'Already have an account?' : 'Need an account?'}{' '}
                 <button
                   type="button"
-                  className="ghost"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-pressed={showPassword}
+                  className="link-btn"
+                  onClick={() => switchMode(isSignup ? 'signin' : 'signup')}
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {isSignup ? 'Sign in here' : 'Create an account'}
                 </button>
-              </span>
-              {errors.password && (
-                <small id="password-error" className="field-error">
-                  {errors.password}
-                </small>
-              )}
-            </div>
-
-            <label className="remember">
-              <input
-                type="checkbox"
-                checked={form.remember}
-                onChange={(event) => updateField('remember', event.target.checked)}
-              />
-              <span>Keep me signed in on this device</span>
-            </label>
-
-            {formError && (
-              <p className="form-error" role="alert">
-                {formError}
               </p>
-            )}
-
-            <button type="submit" className="primary" disabled={submitting}>
-              {submitting ? 'Working…' : isSignup ? 'Create account' : 'Sign in'}
-            </button>
-
-            <p className="switch">
-              {isSignup ? 'Already have an account?' : 'New to LocalLens?'}{' '}
-              <button type="button" className="text-button" onClick={() => switchMode(isSignup ? 'signin' : 'signup')}>
-                {isSignup ? 'Sign in' : 'Create an account'}
-              </button>
-            </p>
-
-            {!isSignup && (
-              <p className="demo">
-                Demo account{' '}
-                <button type="button" className="text-button" onClick={fillDemo}>
-                  {DEMO.email}
-                </button>
-                <span className="demo-pass">password {DEMO.password}</span>
-              </p>
-            )}
-          </form>
-        )}
-      </section>
+            </form>
+          )}
+        </section>
       </div>
     </main>
   )

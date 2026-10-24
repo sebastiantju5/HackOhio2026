@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 4: Terra Americana / Overland Field Guide — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --parchment: #faf5ea;
+      --paper: #fffefb;
+      --sand: #ece2cf;
+      --sand-dark: #dacdb6;
+      --cedar: #1b3a2a;
+      --cedar-dim: #2f5440;
+      --saddle: #8c4e23;
+      --brass: #ca8a04;
+      --clay: #b91c1c;
+      --charcoal: #232724;
+      --muted: #6c736a;
+      --border: #dcd4c0;
+      --font-display: 'Fraunces', serif;
+      --font-body: 'Public Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--parchment);
+      color: var(--charcoal);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Top Preview Control Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(250, 245, 234, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: var(--sand);
+      color: var(--cedar);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--sand-dark);
+    }
+    .preview-tabs {
+      display: flex;
+      background: var(--sand);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--sand-dark);
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: var(--paper);
+      color: var(--charcoal);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-actions a:hover { color: var(--saddle); }
+
+    /* Page View Containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Header */
+    .terra-header {
+      background: var(--paper);
+      border-bottom: 2px solid var(--sand-dark);
+      padding: 18px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .shield-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: var(--charcoal);
+    }
+    .route-shield {
+      width: 38px;
+      height: 42px;
+      background: var(--cedar);
+      color: var(--parchment);
+      clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%);
+      display: grid;
+      place-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+    }
+    .brand-titles h1 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--cedar);
+    }
+    .brand-titles p {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .terra-user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--sand);
+      border: 1px solid var(--sand-dark);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--cedar);
+    }
+    .terra-user-pill:hover {
+      background: var(--paper);
+    }
+
+    /* Layout */
+    .terra-layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: calc(100vh - 120px);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: var(--paper);
+    }
+    .field-guide-sidebar {
+      padding: 36px 30px;
+      border-right: 1px solid var(--border);
+      background: var(--parchment);
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+    .field-guide-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--saddle);
+      font-weight: 500;
+    }
+    .field-guide-sidebar h2 {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--cedar);
+    }
+    .field-guide-sidebar h2 em {
+      color: var(--saddle);
+      font-style: italic;
+    }
+    .terra-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .terra-input-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .terra-input-card label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .terra-input-card select, .terra-input-card input {
+      border: none;
+      outline: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--charcoal);
+      background: transparent;
+      padding: 2px 0;
+    }
+    .expedition-button {
+      background: var(--cedar);
+      color: var(--parchment);
+      border: 1px solid var(--cedar-dim);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.2s;
+    }
+    .expedition-button:hover {
+      background: #12281c;
+    }
+
+    /* Main Expedition Workspace */
+    .expedition-workspace {
+      padding: 36px 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .corridor-ledger-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--sand);
+      padding-bottom: 18px;
+    }
+    .corridor-ledger-header h2 {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--cedar);
+    }
+    .corridor-route-tag {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--sand);
+      border: 1px solid var(--sand-dark);
+      padding: 4px 10px;
+      border-radius: 4px;
+      color: var(--saddle);
+    }
+
+    /* Waypoint Map + Details */
+    .overland-corridor-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--parchment);
+    }
+    .map-canvas-area {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: #f4ecdc;
+    }
+    .topo-grid {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle at 60% 40%, rgba(140, 78, 35, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .overland-map-svg {
+      width: 100%;
+      max-width: 560px;
+      height: 320px;
+    }
+
+    /* Waypoint Ledger Box */
+    .waypoint-ledger-box {
+      background: var(--paper);
+      border-left: 1px solid var(--border);
+      padding: 24px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .milepost-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--sand);
+      color: var(--saddle);
+      padding: 4px 10px;
+      border-radius: 4px;
+      width: fit-content;
+      font-weight: 500;
+    }
+    .milepost-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--cedar);
+    }
+    .field-weather-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .weather-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 8px;
+    }
+    .weather-row span:first-child {
+      color: var(--muted);
+    }
+    .weather-row span:last-child {
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+
+    /* Overland Departure Scrubber */
+    .overland-scrubber-deck {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      background: var(--paper);
+    }
+    .scrubber-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .overland-bars-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      height: 48px;
+      margin-top: 10px;
+    }
+    .overland-bar {
+      flex: 1;
+      background: #c5d4bc;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .overland-bar:hover, .overland-bar.active {
+      background: var(--cedar);
+    }
+    .overland-bar.caution {
+      background: #e8c784;
+    }
+    .overland-bar.caution:hover, .overland-bar.caution.active {
+      background: var(--brass);
+    }
+    .overland-bar.high {
+      background: #e09b9b;
+    }
+    .overland-bar.high:hover, .overland-bar.high.active {
+      background: var(--clay);
+    }
+
+    /* LOGIN VIEW (Terra Americana) */
+    .login-stage-ledger {
+      min-height: calc(100vh - 60px);
+      display: grid;
+      place-content: center;
+      padding: 40px 20px;
+    }
+    .ledger-auth-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--paper);
+      border: 2px solid var(--sand-dark);
+      border-radius: 12px;
+      padding: 40px 36px;
+      box-shadow: 0 10px 30px rgba(27, 58, 42, 0.08);
+    }
+    .ledger-auth-header {
+      text-align: center;
+      margin-bottom: 26px;
+    }
+    .ledger-shield {
+      width: 48px;
+      height: 52px;
+      background: var(--cedar);
+      color: var(--parchment);
+      clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%);
+      display: grid;
+      place-content: center;
+      margin: 0 auto 16px;
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .ledger-auth-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--cedar);
+    }
+    .ledger-tab-bar {
+      display: flex;
+      border-bottom: 2px solid var(--sand);
+      margin-bottom: 24px;
+    }
+    .ledger-tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+    .ledger-tab-btn.active {
+      color: var(--cedar);
+      border-bottom-color: var(--cedar);
+    }
+    .ledger-form-field {
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ledger-form-field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ledger-form-field input {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-family: var(--font-body);
+      background: var(--parchment);
+      outline: none;
+      transition: all 0.2s;
+    }
+    .ledger-form-field input:focus {
+      border-color: var(--cedar);
+      background: var(--paper);
+    }
+
+    /* Palette Drawer */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: var(--paper);
+      border: 1px solid var(--sand-dark);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 280px;
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); }
+
+    @media (max-width: 900px) {
+      .terra-layout { grid-template-columns: 1fr; border: none; }
+      .overland-corridor-grid { grid-template-columns: 1fr; }
+      .waypoint-ledger-box { border-left: none; border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 4 / 5</span>
+      <strong>Terra Americana &amp; Overland Field Guide</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Overland Corridor Dispatch
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sign In &amp; Account
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid var(--border)">🎨 Swatches</button>
+      <a href="index.html">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- VIEW 1: OVERLAND CORRIDOR DISPATCH -->
+  <div id="view-planner" class="view-container active">
+    <header class="terra-header">
+      <a href="#" class="shield-brand">
+        <div class="route-shield">71</div>
+        <div class="brand-titles">
+          <h1>WeatherWay</h1>
+          <p>Overland Highway &amp; Weather Corridor</p>
+        </div>
+      </a>
+
+      <div class="terra-user-pill" onclick="switchView('login')">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--cedar);"></span>
+        <span>Alex Rivera (Wayfarer #88)</span>
+      </div>
+    </header>
+
+    <div class="terra-layout">
+      <!-- Sidebar -->
+      <aside class="field-guide-sidebar">
+        <div>
+          <span class="field-guide-badge">Trip Dispatcher</span>
+          <h2>The road ahead, <em>clarified.</em></h2>
+          <p style="font-size: 13px; color: var(--muted); margin-top: 8px;">
+            Pairing your arrival coordinates with high-resolution atmospheric models.
+          </p>
+        </div>
+
+        <form class="terra-form" onsubmit="event.preventDefault()">
+          <div class="terra-input-card">
+            <label>Origin Waypoint</label>
+            <select>
+              <option>Columbus, OH (Scioto Valley)</option>
+              <option>Cincinnati, OH (Ohio River)</option>
+              <option>Dayton, OH (Great Miami)</option>
+            </select>
+          </div>
+
+          <div class="terra-input-card">
+            <label>Destination Waypoint</label>
+            <select>
+              <option>Cleveland, OH (Lake Erie Basin)</option>
+              <option>Akron, OH (Cuyahoga Valley)</option>
+              <option>Toledo, OH (Maumee Bay)</option>
+            </select>
+          </div>
+
+          <div class="terra-input-card">
+            <label>Earliest Departure</label>
+            <input type="datetime-local" value="2026-10-24T14:30">
+          </div>
+
+          <div class="terra-input-card">
+            <label>Latest Departure</label>
+            <input type="datetime-local" value="2026-10-24T16:30">
+          </div>
+
+          <button class="expedition-button">
+            <span>Chart Weather Corridor</span>
+            <span>↗</span>
+          </button>
+        </form>
+
+        <div style="background: var(--sand); border: 1px solid var(--sand-dark); padding: 14px; border-radius: 8px; font-size: 12px; color: var(--cedar);">
+          <strong>Trail Advisory:</strong> Rain accumulation in the Richland hills is anticipated between 2:45 and 3:20 PM.
+        </div>
+      </aside>
+
+      <!-- Main Workspace -->
+      <main class="expedition-workspace">
+        <div class="corridor-ledger-header">
+          <div>
+            <h2>Columbus → Cleveland</h2>
+            <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Corridor Route: I-71 Northbound · 143.2 Miles · Est. Drive: 2 Hours 14 Minutes</p>
+          </div>
+          <div class="corridor-route-tag">
+            RECOMMENDED: 3:15 PM ET DEPARTURE
+          </div>
+        </div>
+
+        <!-- Overland Corridor Grid -->
+        <div class="overland-corridor-grid">
+          <div class="map-canvas-area">
+            <div class="topo-grid"></div>
+            <!-- Handcrafted SVG Corridor -->
+            <svg class="overland-map-svg" viewBox="0 0 560 300" fill="none">
+              <!-- Route Path -->
+              <path d="M 80 250 L 160 215 L 260 165 L 370 115 L 480 50" stroke="#1b3a2a" stroke-width="5" stroke-linecap="round"/>
+              <path d="M 80 250 L 160 215 L 260 165 L 370 115 L 480 50" stroke="#ca8a04" stroke-width="12" stroke-opacity="0.2" stroke-linecap="round"/>
+
+              <!-- Waypoints -->
+              <circle cx="80" cy="250" r="7" fill="#faf5ea" stroke="#1b3a2a" stroke-width="3"/>
+              <text x="95" y="255" fill="#1b3a2a" font-family="'Fraunces'" font-size="13" font-weight="700">Columbus (MP 0)</text>
+
+              <circle cx="160" cy="215" r="5" fill="#1b3a2a"/>
+              <!-- Selected Waypoint: Mansfield -->
+              <circle cx="260" cy="165" r="9" fill="#faf5ea" stroke="#ca8a04" stroke-width="3"/>
+              <circle cx="260" cy="165" r="4" fill="#ca8a04"/>
+              <text x="275" y="160" fill="#8c4e23" font-family="'Fraunces'" font-size="12" font-weight="700">Mansfield (MP 68)</text>
+
+              <circle cx="370" cy="115" r="5" fill="#1b3a2a"/>
+              <circle cx="480" cy="50" r="7" fill="#faf5ea" stroke="#1b3a2a" stroke-width="3"/>
+              <text x="400" y="40" fill="#1b3a2a" font-family="'Fraunces'" font-size="13" font-weight="700">Cleveland (MP 143)</text>
+            </svg>
+          </div>
+
+          <!-- Waypoint Ledger -->
+          <div class="waypoint-ledger-box">
+            <span class="milepost-tag">MILEPOST 68.2</span>
+            <div>
+              <h3 class="milepost-name">Mansfield Route Cut</h3>
+              <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">Estimated Arrival: 4:02 PM ET</p>
+            </div>
+
+            <div class="field-weather-list">
+              <div class="weather-row">
+                <span>Rain Exposure</span>
+                <span style="color: var(--brass);">2.1 mm/h (Caution)</span>
+              </div>
+              <div class="weather-row">
+                <span>Valley Crosswind</span>
+                <span>27 km/h</span>
+              </div>
+              <div class="weather-row">
+                <span>Horizon Visibility</span>
+                <span>4.8 km</span>
+              </div>
+              <div class="weather-row">
+                <span>Ambient Air Temp</span>
+                <span>12°C (54°F)</span>
+              </div>
+            </div>
+
+            <div style="font-size: 11px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 12px;">
+              Pavement grip conditions remain stable; visibility improves northward towards Medina County.
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrubber -->
+        <div class="overland-scrubber-deck">
+          <div class="scrubber-title-row">
+            <h3 style="font-family: var(--font-display); font-size: 20px;">Departure Window Comparison</h3>
+            <span style="font-family: var(--font-mono); font-size: 12px; color: var(--cedar);">5-min increments</span>
+          </div>
+
+          <div class="overland-bars-row">
+            <div class="overland-bar high" style="height: 42px;" title="2:30 PM: 40 min storm"></div>
+            <div class="overland-bar high" style="height: 36px;" title="2:45 PM: 34 min storm"></div>
+            <div class="overland-bar caution" style="height: 24px;" title="3:00 PM: 20 min storm"></div>
+            <div class="overland-bar active" style="height: 12px;" title="3:15 PM: 6 min clear (OPTIMAL)"></div>
+            <div class="overland-bar" style="height: 14px;" title="3:30 PM: 8 min clear"></div>
+            <div class="overland-bar caution" style="height: 20px;" title="3:45 PM: 16 min storm"></div>
+            <div class="overland-bar high" style="height: 38px;" title="4:00 PM: 32 min storm"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-top: 6px;">
+            <span>2:30 PM</span>
+            <span style="color: var(--cedar); font-weight: 600;">3:15 PM (Recommended Departure)</span>
+            <span>4:00 PM</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VIEW 2: AUTH / SIGN IN (Terra Americana) -->
+  <div id="view-login" class="view-container">
+    <div class="login-stage-ledger">
+      <div class="ledger-auth-card">
+        <div class="ledger-auth-header">
+          <div class="ledger-shield">W</div>
+          <h2 class="ledger-auth-title">WeatherWay Wayfarer</h2>
+          <p style="font-size: 13px; color: var(--muted); margin-top: 6px;">Sign in to preserve your Ohio corridor field notes and travel presets</p>
+        </div>
+
+        <div class="ledger-tab-bar">
+          <button id="terra-tab-signin" class="ledger-tab-btn active" onclick="setTerraAuth('signin')">Sign In</button>
+          <button id="terra-tab-signup" class="ledger-tab-btn" onclick="setTerraAuth('signup')">Create Account</button>
+        </div>
+
+        <div style="background: var(--sand); border: 1px dashed var(--sand-dark); padding: 12px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span>Demo Account (Alex Rivera)</span>
+          <button type="button" onclick="fillTerraDemo()" style="background: var(--cedar); border: none; color: var(--parchment); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">Load Credentials</button>
+        </div>
+
+        <form onsubmit="handleTerraAuth(event)">
+          <div id="terra-name-group" class="ledger-form-field" style="display: none;">
+            <label>Wayfarer Name</label>
+            <input type="text" id="terra-name" placeholder="Alex Rivera">
+          </div>
+
+          <div class="ledger-form-field">
+            <label>Email Address</label>
+            <input type="email" id="terra-email" required placeholder="alex@weatherway.app">
+          </div>
+
+          <div class="ledger-form-field">
+            <label>Password</label>
+            <input type="password" id="terra-password" required placeholder="••••••••••••">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 13px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" checked style="accent-color: var(--cedar);">
+              <span>Keep wayfarer session active</span>
+            </label>
+            <a href="#" style="color: var(--saddle); text-decoration: none;">Reset password</a>
+          </div>
+
+          <button type="submit" class="expedition-button" style="width: 100%; justify-content: center;">
+            <span id="terra-submit-label">Sign In to Wayfarer Ledger</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 22px; text-align: center;">
+          <button type="button" onclick="switchView('planner')" style="background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer;">
+            ← Return to Overland Corridor Dispatch
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px;">Palette Tokens</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; color: var(--muted); cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--muted); margin-top: 4px;">Sun-bleached parchment, ponderosa cedar, saddle leather, and brass.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #faf5ea;" title="#faf5ea Parchment"></div>
+      <div class="swatch-box" style="background: #1b3a2a;" title="#1b3a2a Cedar"></div>
+      <div class="swatch-box" style="background: #8c4e23;" title="#8c4e23 Saddle"></div>
+      <div class="swatch-box" style="background: #ca8a04;" title="#ca8a04 Brass"></div>
+      <div class="swatch-box" style="background: #b91c1c;" title="#b91c1c Clay"></div>
+      <div class="swatch-box" style="background: #232724;" title="#232724 Charcoal"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setTerraAuth(mode) {
+      document.getElementById('terra-tab-signin').classList.toggle('active', mode === 'signin');
+      document.getElementById('terra-tab-signup').classList.toggle('active', mode === 'signup');
+      document.getElementById('terra-name-group').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('terra-submit-label').innerText = mode === 'signup' ? 'Enroll Wayfarer Profile' : 'Sign In to Wayfarer Ledger';
+    }
+
+    function fillTerraDemo() {
+      setTerraAuth('signin');
+      document.getElementById('terra-email').value = 'alex@weatherway.app';
+      document.getElementById('terra-password').value = 'neighborhood';
+    }
+
+    function handleTerraAuth(e) {
+      e.preventDefault();
+      alert('Wayfarer ledger session saved! Returning to trip planner.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

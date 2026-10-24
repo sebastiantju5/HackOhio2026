@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 2: Nordic Cartography / Atlas Dispatch — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --canvas: #f4f6f2;
+      --paper: #ffffff;
+      --paper-subtle: #ebefe7;
+      --ink: #162638;
+      --ink-dim: #485c70;
+      --ink-muted: #7b8e9e;
+      --fjord: #23486a;
+      --spruce: #1d5b43;
+      --spruce-light: #e4efe9;
+      --amber: #d97706;
+      --amber-light: #fef3c7;
+      --brick: #be123c;
+      --brick-light: #ffe4e6;
+      --border: #d7e0d4;
+      --border-dark: #b8c7b4;
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Top Preview Control Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(244, 246, 242, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: var(--paper-subtle);
+      color: var(--spruce);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .preview-tabs {
+      display: flex;
+      background: var(--paper-subtle);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: var(--ink-dim);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: var(--ink-dim);
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-actions a:hover { color: var(--spruce); }
+
+    /* Page View Containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Main Header */
+    .nordic-header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nordic-wordmark {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .atlas-seal {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--spruce);
+      color: var(--paper);
+      display: grid;
+      place-content: center;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 20px;
+    }
+    .brand-group h2 {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: -0.3px;
+    }
+    .brand-group p {
+      font-size: 11px;
+      color: var(--ink-dim);
+      letter-spacing: 0.3px;
+    }
+    .header-user-tag {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 14px;
+      background: var(--paper-subtle);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .header-user-tag:hover {
+      background: var(--paper);
+      border-color: var(--border-dark);
+    }
+
+    /* Atlas Main Content */
+    .atlas-layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: calc(100vh - 120px);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: var(--paper);
+    }
+    .atlas-sidebar {
+      padding: 36px 30px;
+      border-right: 1px solid var(--border);
+      background: var(--canvas);
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+    .atlas-kicker {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--spruce);
+    }
+    .atlas-headline {
+      font-family: var(--font-serif);
+      font-size: 32px;
+      font-weight: 400;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+    .atlas-headline em {
+      font-style: italic;
+      color: var(--fjord);
+    }
+    .atlas-form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .field-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field-card label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field-card select, .field-card input {
+      border: none;
+      outline: none;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--ink);
+      background: transparent;
+      padding: 4px 0;
+    }
+    .atlas-button {
+      background: var(--spruce);
+      color: var(--paper);
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .atlas-button:hover {
+      background: #154532;
+    }
+
+    /* Atlas Workspace */
+    .atlas-workspace {
+      padding: 36px 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      background: var(--paper);
+    }
+    .route-dispatch-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--canvas);
+      padding-bottom: 20px;
+    }
+    .route-dispatch-header h1 {
+      font-family: var(--font-serif);
+      font-size: 34px;
+      font-weight: 400;
+      color: var(--ink);
+    }
+    .dispatch-meta {
+      font-size: 13px;
+      color: var(--ink-dim);
+      margin-top: 4px;
+    }
+
+    /* Map & Timeline Section */
+    .atlas-corridor-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--canvas);
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      min-height: 420px;
+    }
+    .atlas-map-area {
+      position: relative;
+      background: #eef2eb;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .contour-lines {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle at 70% 30%, rgba(29, 91, 67, 0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .atlas-map-svg {
+      width: 100%;
+      max-width: 560px;
+      height: 320px;
+    }
+
+    /* Checkpoint Waypoint Card */
+    .waypoint-panel {
+      background: var(--paper);
+      border-left: 1px solid var(--border);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .waypoint-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--spruce);
+      background: var(--spruce-light);
+      padding: 4px 10px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+    .waypoint-title {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+    }
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .metrics-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+    .metrics-table td {
+      padding: 10px 0;
+      color: var(--ink-dim);
+    }
+    .metrics-table td:last-child {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    /* Scrubber Deck */
+    .dispatch-scrubber {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      background: var(--paper);
+    }
+    .scrubber-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 18px;
+    }
+    .scrubber-header h3 {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 400;
+    }
+    .departure-timeline {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+    .timeline-step {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--paper);
+    }
+    .timeline-step:hover, .timeline-step.chosen {
+      border-color: var(--spruce);
+      background: var(--spruce-light);
+    }
+    .timeline-step.chosen {
+      box-shadow: 0 0 0 1px var(--spruce);
+    }
+    .step-time {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .step-exposure {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      margin-top: 4px;
+      color: var(--ink-dim);
+    }
+    .step-exposure.low { color: var(--spruce); }
+    .step-exposure.med { color: var(--amber); }
+    .step-exposure.high { color: var(--brick); }
+
+    /* Recommendation Banner */
+    .recommendation-callout {
+      background: var(--spruce-light);
+      border: 1px solid var(--spruce);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .rec-body h4 {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      color: var(--spruce);
+      margin-bottom: 4px;
+    }
+    .rec-body p {
+      font-size: 13px;
+      color: #143d2c;
+    }
+
+    /* LOGIN VIEW (Nordic Cartography) */
+    .login-container {
+      min-height: calc(100vh - 60px);
+      display: grid;
+      place-content: center;
+      padding: 40px 20px;
+    }
+    .login-folio {
+      width: 100%;
+      max-width: 480px;
+      background: var(--paper);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 44px 40px;
+      box-shadow: 0 10px 30px rgba(22, 38, 56, 0.05);
+    }
+    .folio-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .folio-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--spruce);
+      color: var(--paper);
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-style: italic;
+      display: grid;
+      place-content: center;
+      margin: 0 auto 16px;
+    }
+    .folio-title {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--ink);
+    }
+    .folio-sub {
+      font-size: 13px;
+      color: var(--ink-dim);
+      margin-top: 6px;
+    }
+    .folio-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .folio-tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-dim);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+    }
+    .folio-tab-btn.active {
+      color: var(--spruce);
+      border-bottom-color: var(--spruce);
+      font-weight: 600;
+    }
+    .folio-group {
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .folio-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-dim);
+    }
+    .folio-group input {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .folio-group input:focus {
+      border-color: var(--spruce);
+      box-shadow: 0 0 0 3px rgba(29, 91, 67, 0.12);
+    }
+    .folio-demo-chip {
+      background: var(--canvas);
+      border: 1px dashed var(--border-dark);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .folio-demo-chip button {
+      background: var(--paper);
+      border: 1px solid var(--border-dark);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--spruce);
+    }
+    .folio-demo-chip button:hover {
+      background: var(--spruce);
+      color: var(--paper);
+    }
+
+    /* Palette Modal / Card */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: var(--paper);
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 280px;
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); }
+
+    @media (max-width: 900px) {
+      .atlas-layout { grid-template-columns: 1fr; border: none; }
+      .atlas-corridor-card { grid-template-columns: 1fr; }
+      .waypoint-panel { border-left: none; border-top: 1px solid var(--border); }
+      .departure-timeline { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 2 / 5</span>
+      <strong>Nordic Cartography &amp; Atlas Dispatch</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Atlas Corridor Planner
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sign In &amp; Account
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid var(--border)">🎨 Swatches</button>
+      <a href="index.html">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- VIEW 1: ATLAS CORRIDOR PLANNER -->
+  <div id="view-planner" class="view-container active">
+    <header class="nordic-header">
+      <a href="#" class="nordic-wordmark">
+        <div class="atlas-seal">w</div>
+        <div class="brand-group">
+          <h2>WeatherWay</h2>
+          <p>National Route &amp; Weather Corridor Dispatch</p>
+        </div>
+      </a>
+
+      <div class="header-user-tag" onclick="switchView('login')">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--spruce);"></span>
+        <span>Alex Rivera (Dispatch #402)</span>
+      </div>
+    </header>
+
+    <div class="atlas-layout">
+      <!-- Sidebar -->
+      <aside class="atlas-sidebar">
+        <div>
+          <span class="atlas-kicker">Corridor Parameters</span>
+          <h2 class="atlas-headline">Plan the drive with <em>foresight.</em></h2>
+        </div>
+
+        <form class="atlas-form" onsubmit="event.preventDefault()">
+          <div class="field-card">
+            <label>Departure Point</label>
+            <select>
+              <option>Columbus, OH (Broad &amp; High)</option>
+              <option>Cincinnati, OH (Downtown)</option>
+              <option>Dayton, OH (Main St)</option>
+            </select>
+          </div>
+
+          <div class="field-card">
+            <label>Arrival Point</label>
+            <select>
+              <option>Cleveland, OH (Public Square)</option>
+              <option>Akron, OH (University Area)</option>
+              <option>Toledo, OH (Maumee River)</option>
+            </select>
+          </div>
+
+          <div class="field-card">
+            <label>Earliest Departure</label>
+            <input type="datetime-local" value="2026-10-24T14:30">
+          </div>
+
+          <div class="field-card">
+            <label>Latest Departure</label>
+            <input type="datetime-local" value="2026-10-24T16:30">
+          </div>
+
+          <button class="atlas-button">
+            <span>Calculate Weather Corridors</span>
+            <span>→</span>
+          </button>
+        </form>
+
+        <div style="font-size: 12px; color: var(--ink-dim); border-top: 1px solid var(--border); padding-top: 16px;">
+          <strong>Atlas Methodology:</strong> Evaluates NOAA HRRR 15-minute point forecasts mapped to estimated driving arrival at each 15-minute interval.
+        </div>
+      </aside>
+
+      <!-- Main Workspace -->
+      <main class="atlas-workspace">
+        <div class="route-dispatch-header">
+          <div>
+            <h1>Columbus → Cleveland</h1>
+            <p class="dispatch-meta">Primary Route: Interstate 71 North · 143 miles · Baseline Travel Time: 2h 14m</p>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 12px; color: var(--spruce); background: var(--spruce-light); padding: 6px 14px; border-radius: 6px;">
+            DISPATCH REF: OH-71-2026-10
+          </div>
+        </div>
+
+        <!-- Corridor Card: Map + Waypoint Inspector -->
+        <div class="atlas-corridor-card">
+          <div class="atlas-map-area">
+            <div class="contour-lines"></div>
+            <!-- Cartographic SVG Corridor -->
+            <svg class="atlas-map-svg" viewBox="0 0 540 300" fill="none">
+              <!-- Topo / Terrain Lines -->
+              <path d="M 50 180 Q 200 140 500 220" stroke="#d5dfd1" stroke-width="1.5" stroke-dasharray="4 4"/>
+              <path d="M 40 240 Q 260 190 520 160" stroke="#d5dfd1" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+              <!-- Route Path -->
+              <path d="M 80 250 L 170 210 L 260 160 L 370 110 L 460 50" stroke="#1d5b43" stroke-width="4" stroke-linecap="round"/>
+              <path d="M 80 250 L 170 210 L 260 160 L 370 110 L 460 50" stroke="#1d5b43" stroke-width="12" stroke-opacity="0.15" stroke-linecap="round"/>
+
+              <!-- Waypoints -->
+              <!-- Columbus -->
+              <circle cx="80" cy="250" r="7" fill="#ffffff" stroke="#1d5b43" stroke-width="3"/>
+              <text x="95" y="255" fill="#162638" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Columbus (Mile 0)</text>
+
+              <!-- CP 1 -->
+              <circle cx="170" cy="210" r="5" fill="#1d5b43"/>
+              <!-- CP 2: Mansfield (Selected) -->
+              <circle cx="260" cy="160" r="8" fill="#ffffff" stroke="#d97706" stroke-width="3"/>
+              <circle cx="260" cy="160" r="4" fill="#d97706"/>
+              <text x="275" y="155" fill="#d97706" font-family="'Plus Jakarta Sans'" font-size="11" font-weight="700">Mansfield Waypoint (Mile 68)</text>
+
+              <!-- CP 3 -->
+              <circle cx="370" cy="110" r="5" fill="#1d5b43"/>
+              <!-- Cleveland -->
+              <circle cx="460" cy="50" r="7" fill="#ffffff" stroke="#1d5b43" stroke-width="3"/>
+              <text x="390" y="40" fill="#162638" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Cleveland (Mile 143)</text>
+            </svg>
+          </div>
+
+          <!-- Waypoint Details -->
+          <div class="waypoint-panel">
+            <span class="waypoint-badge">WAYPOINT 04 OF 10</span>
+            <div>
+              <h3 class="waypoint-title">Mansfield Interchange</h3>
+              <p style="font-size: 12px; color: var(--ink-dim); margin-top: 2px;">Mile 68.2 · Arrival: 4:02 PM ET</p>
+            </div>
+
+            <table class="metrics-table">
+              <tr>
+                <td>Expected Weather</td>
+                <td style="color: var(--amber);">Light Rain (2.1 mm/h)</td>
+              </tr>
+              <tr>
+                <td>Crosswind Vector</td>
+                <td>24 km/h West</td>
+              </tr>
+              <tr>
+                <td>Road Visibility</td>
+                <td>4.8 km</td>
+              </tr>
+              <tr>
+                <td>Air Temperature</td>
+                <td>12°C (54°F)</td>
+              </tr>
+            </table>
+
+            <div style="font-size: 11px; color: var(--ink-dim); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 12px;">
+              Crosswinds near Richland County overpasses decrease significantly after the 3:30 PM window.
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrubber -->
+        <div class="dispatch-scrubber">
+          <div class="scrubber-header">
+            <h3>Departure Timing Comparison</h3>
+            <span style="font-size: 12px; color: var(--ink-dim);">5-minute step evaluation</span>
+          </div>
+
+          <div class="departure-timeline">
+            <div class="timeline-step">
+              <div class="step-time">2:30 PM</div>
+              <div class="step-exposure high">42 min rain</div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-time">2:45 PM</div>
+              <div class="step-exposure high">36 min rain</div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-time">3:00 PM</div>
+              <div class="step-exposure med">21 min rain</div>
+            </div>
+            <div class="timeline-step chosen">
+              <div class="step-time">3:15 PM ★</div>
+              <div class="step-exposure low">6 min clear</div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-time">3:30 PM</div>
+              <div class="step-exposure low">8 min clear</div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-time">3:45 PM</div>
+              <div class="step-exposure med">16 min rain</div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-time">4:00 PM</div>
+              <div class="step-exposure high">32 min rain</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommendation Banner -->
+        <div class="recommendation-callout">
+          <div class="rec-body">
+            <h4>Recommended Departure Window: 3:15 PM – 3:30 PM</h4>
+            <p>Waiting 45 minutes saves 36 minutes of heavy precipitation and gusty crosswinds along the Mansfield corridor.</p>
+          </div>
+          <button class="atlas-button" style="white-space: nowrap; padding: 10px 18px;" onclick="alert('Departure 3:15 PM selected')">
+            Select 3:15 PM Window
+          </button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VIEW 2: AUTH / SIGN IN -->
+  <div id="view-login" class="view-container">
+    <div class="login-container">
+      <div class="login-folio">
+        <div class="folio-header">
+          <div class="folio-mark">w</div>
+          <h2 class="folio-title">WeatherWay Dispatch</h2>
+          <p class="folio-sub">Sign in to sync your Ohio route corridors and weather alerts</p>
+        </div>
+
+        <div class="folio-tabs">
+          <button id="btn-tab-signin" class="folio-tab-btn active" onclick="setFolioMode('signin')">Sign In</button>
+          <button id="btn-tab-signup" class="folio-tab-btn" onclick="setFolioMode('signup')">Create Account</button>
+        </div>
+
+        <!-- Demo button -->
+        <div class="folio-demo-chip">
+          <span>Demo Dispatcher (Alex Rivera)</span>
+          <button type="button" onclick="fillFolioDemo()">Load Credentials</button>
+        </div>
+
+        <form onsubmit="handleFolioSubmit(event)">
+          <div id="group-name" class="folio-group" style="display: none;">
+            <label>Dispatcher Name</label>
+            <input type="text" id="folio-name" placeholder="Alex Rivera">
+          </div>
+
+          <div class="folio-group">
+            <label>Email Address</label>
+            <input type="email" id="folio-email" required placeholder="alex@weatherway.app">
+          </div>
+
+          <div class="folio-group">
+            <label>Access Password</label>
+            <input type="password" id="folio-password" required placeholder="••••••••••••">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 13px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" checked style="accent-color: var(--spruce);">
+              <span>Remember dispatch session</span>
+            </label>
+            <a href="#" style="color: var(--spruce); text-decoration: none;">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="atlas-button" style="width: 100%; justify-content: center;">
+            <span id="folio-submit-label">Sign In to WeatherWay</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 24px; text-align: center;">
+          <button type="button" onclick="switchView('planner')" style="background: none; border: none; color: var(--ink-dim); font-size: 13px; cursor: pointer;">
+            ← Return to Atlas Corridor Planner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px;">Palette Tokens</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; color: var(--ink-dim); cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Nordic atlas paper with spruce green and fjord slate.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #f4f6f2;" title="#f4f6f2 Canvas"></div>
+      <div class="swatch-box" style="background: #ffffff;" title="#ffffff Paper"></div>
+      <div class="swatch-box" style="background: #1d5b43;" title="#1d5b43 Spruce"></div>
+      <div class="swatch-box" style="background: #162638;" title="#162638 Ink"></div>
+      <div class="swatch-box" style="background: #d97706;" title="#d97706 Warning"></div>
+      <div class="swatch-box" style="background: #be123c;" title="#be123c Brick"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setFolioMode(mode) {
+      document.getElementById('btn-tab-signin').classList.toggle('active', mode === 'signin');
+      document.getElementById('btn-tab-signup').classList.toggle('active', mode === 'signup');
+      document.getElementById('group-name').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('folio-submit-label').innerText = mode === 'signup' ? 'Register Dispatch Profile' : 'Sign In to WeatherWay';
+    }
+
+    function fillFolioDemo() {
+      setFolioMode('signin');
+      document.getElementById('folio-email').value = 'alex@weatherway.app';
+      document.getElementById('folio-password').value = 'neighborhood';
+    }
+
+    function handleFolioSubmit(e) {
+      e.preventDefault();
+      alert('Welcome back, Alex Rivera! Signed into WeatherWay Dispatch.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

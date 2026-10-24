@@ -1,19 +1,24 @@
 :root {
-  --bg: #3c3e37;
-  --panel: #171816;
-  --panel-2: #121311;
-  --cream: #f3ecd4;
-  --cream-dim: #cfc6ae;
-  --line: #3a3c34;
-  --muted: #9c947f;
-  --danger: #e08a72;
-  --ink: #171816;
-  font-family: Silkscreen, "Courier New", monospace;
-  color: var(--cream);
-  background: var(--bg);
+  --terracotta: #6f281a;
+  --terracotta-dark: #541d11;
+  --paper: #f8f5ee;
+  --paper-card: #ffffff;
+  --ink: #1b1b1e;
+  --ink-dim: #54524f;
+  --spruce: #1d5b43;
+  --amber: #c87508;
+  --tag-blue: #93c5fd;
+  --tag-blue-dark: #1e3a8a;
+  --border: #dfd8cc;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--terracotta);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: none;
+  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
@@ -23,10 +28,16 @@
 
 body {
   margin: 0;
+  background: var(--terracotta);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  min-height: 100svh;
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font-family: inherit;
 }
 

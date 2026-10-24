@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 2A: Nordic Scenic &amp; Floating Capsule — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --canvas: #f6f7f4;
+      --paper: #ffffff;
+      --paper-subtle: #edf1e9;
+      --ink: #142232;
+      --ink-dim: #455668;
+      --ink-muted: #798a9c;
+      --spruce: #1c563e;
+      --spruce-dark: #123d2b;
+      --spruce-light: #e3ede8;
+      --fjord: #1f3f5c;
+      --amber: #d97706;
+      --amber-light: #fef3c7;
+      --brick: #be123c;
+      --border: #d8e0d5;
+      --border-dark: #bcc7b8;
+      --capsule-bg: #12161f;
+      --capsule-text: #f8fafc;
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 85% 10%, rgba(28, 86, 62, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 10% 90%, rgba(217, 119, 6, 0.04) 0%, transparent 40%);
+    }
+
+    /* Top Preview Navigation Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(246, 247, 244, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: var(--spruce-light);
+      color: var(--spruce);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .preview-tabs {
+      display: flex;
+      background: #e9ece4;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: var(--ink-dim);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: var(--ink-dim);
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-actions a:hover { color: var(--spruce); }
+
+    /* Page View Containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Floating Capsule Navbar (Inspired by Farce) */
+    .capsule-nav-wrapper {
+      padding: 24px 20px 10px;
+      display: flex;
+      justify-content: center;
+    }
+    .capsule-navbar {
+      background: var(--capsule-bg);
+      color: var(--capsule-text);
+      border-radius: 9999px;
+      padding: 7px 10px 7px 20px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      box-shadow: 0 12px 30px rgba(18, 22, 31, 0.22), 0 2px 6px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.12);
+      max-width: 960px;
+      width: 100%;
+      justify-content: space-between;
+    }
+    .capsule-logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+    }
+    .capsule-symbol {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--spruce);
+      color: #fff;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 16px;
+      display: grid;
+      place-content: center;
+    }
+    .capsule-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 13px;
+    }
+    .capsule-links a {
+      color: #cbd5e1;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .capsule-links a:hover { color: #fff; }
+    .capsule-auth {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .capsule-login-btn {
+      color: #cbd5e1;
+      background: transparent;
+      border: none;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: color 0.15s;
+    }
+    .capsule-login-btn:hover { color: #fff; }
+    .capsule-cta-btn {
+      background: #ffffff;
+      color: #0f172a;
+      border: none;
+      border-radius: 9999px;
+      padding: 7px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .capsule-cta-btn:hover {
+      background: #e2e8f0;
+    }
+    .capsule-user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 9999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #fff;
+    }
+    .capsule-user-pill:hover {
+      background: rgba(255,255,255,0.18);
+    }
+    .capsule-avatar-sm {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--spruce);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      display: grid;
+      place-content: center;
+    }
+
+    /* Main Container */
+    .scenic-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 28px 60px;
+    }
+
+    /* Scenic Hero Landscape Banner (Inspired by Image 1) */
+    .scenic-hero-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(20, 34, 50, 0.05);
+      margin-bottom: 32px;
+    }
+    .scenic-illustration {
+      position: relative;
+      height: 300px;
+      background: linear-gradient(180deg, #6aa9d2 0%, #b8d9ea 45%, #eef5e8 75%, #cadbbf 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+    }
+    /* SVG Landscape Canvas */
+    .landscape-svg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+    }
+
+    .scenic-hero-footer {
+      padding: 34px 44px;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 36px;
+      align-items: center;
+      background: #ffffff;
+    }
+    .scenic-hero-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(32px, 3.8vw, 46px);
+      font-weight: 500;
+      line-height: 1.12;
+      letter-spacing: -0.6px;
+      color: var(--ink);
+    }
+    .scenic-hero-headline em {
+      font-style: italic;
+      color: var(--spruce);
+      font-weight: 600;
+    }
+    .scenic-hero-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .scenic-hero-sub {
+      font-size: 14px;
+      color: var(--ink-dim);
+      line-height: 1.6;
+    }
+    .scenic-search-capsule {
+      background: #f1f4ee;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 5px 6px 5px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+    .capsule-inputs-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .capsule-inputs-inline select {
+      background: transparent;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+    }
+    .capsule-submit-btn {
+      background: var(--spruce);
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .capsule-submit-btn:hover {
+      background: var(--spruce-dark);
+    }
+
+    /* Social Proof / Data Providers Strip (Inspired by Image 1) */
+    .providers-strip {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 32px;
+      padding: 0 10px;
+      flex-wrap: wrap;
+    }
+    .providers-strip span {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--ink-muted);
+    }
+    .provider-badges {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .provider-chip {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      font-family: var(--font-mono);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    /* Active Route Workspace */
+    .scenic-workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .corridor-map-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .card-topbar {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafbfa;
+    }
+    .corridor-title-group h3 {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+    }
+    .corridor-title-group p {
+      font-size: 12px;
+      color: var(--ink-dim);
+    }
+    .corridor-map-body {
+      padding: 24px;
+      background: #f4f6f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 380px;
+    }
+    .map-svg-full {
+      width: 100%;
+      max-width: 620px;
+      height: 340px;
+    }
+
+    /* Checkpoint Inspector Card */
+    .checkpoint-card-aside {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .checkpoint-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .checkpoint-hdr h4 {
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 500;
+    }
+    .checkpoint-metrics-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .metric-cell-pill {
+      background: #f7f9f5;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .metric-cell-pill span {
+      display: block;
+      font-size: 10px;
+      color: var(--ink-dim);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .metric-cell-pill strong {
+      font-size: 17px;
+      font-family: var(--font-mono);
+      color: var(--ink);
+      margin-top: 2px;
+      display: block;
+    }
+    .metric-cell-pill strong small {
+      font-size: 11px;
+      color: var(--ink-dim);
+    }
+
+    /* Scrubber Deck (Nordic) */
+    .scenic-scrubber-deck {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 30px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+    .scrubber-deck-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .scrubber-deck-hdr h3 {
+      font-family: var(--font-serif);
+      font-size: 21px;
+      font-weight: 500;
+    }
+    .departure-steps-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+    }
+    .departure-step-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #fafbfa;
+      transition: all 0.2s;
+    }
+    .departure-step-card:hover, .departure-step-card.active {
+      border-color: var(--spruce);
+      background: var(--spruce-light);
+      box-shadow: 0 2px 8px rgba(28, 86, 62, 0.12);
+    }
+    .dep-time {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .dep-status {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      margin-top: 4px;
+    }
+    .dep-status.clear { color: var(--spruce); font-weight: 600; }
+    .dep-status.caution { color: var(--amber); }
+    .dep-status.rain { color: var(--brick); }
+
+    /* Recommendation Banner */
+    .recommendation-ribbon {
+      background: var(--spruce-light);
+      border: 1px solid var(--spruce);
+      border-radius: 12px;
+      padding: 18px 24px;
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .ribbon-text h4 {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      color: var(--spruce-dark);
+      font-weight: 600;
+    }
+    .ribbon-text p {
+      font-size: 13px;
+      color: #1a4231;
+      margin-top: 2px;
+    }
+
+    /* VIEW 2: AUTH / LOGIN PAGE */
+    .login-stage-scenic {
+      min-height: calc(100vh - 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px 60px;
+    }
+    .login-scenic-card {
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(20, 34, 50, 0.08);
+    }
+    .login-scenic-header-banner {
+      height: 140px;
+      position: relative;
+      background: linear-gradient(180deg, #6aa9d2 0%, #b8d9ea 50%, #cadbbf 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      padding: 20px;
+    }
+    .login-scenic-body {
+      padding: 32px 34px;
+    }
+    .login-title-scenic {
+      font-family: var(--font-serif);
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .login-sub-scenic {
+      font-size: 13px;
+      color: var(--ink-dim);
+      margin-top: 4px;
+      margin-bottom: 22px;
+    }
+    .scenic-tabs-pill {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #edf1e9;
+      padding: 3px;
+      border-radius: 9999px;
+      margin-bottom: 22px;
+    }
+    .scenic-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .scenic-tab-btn.active {
+      background: #ffffff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .scenic-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .scenic-input-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-dim);
+    }
+    .scenic-input-group input {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      background: #fafbfa;
+      outline: none;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .scenic-input-group input:focus {
+      border-color: var(--spruce);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(28, 86, 62, 0.12);
+    }
+    .scenic-demo-box {
+      background: #f3f6ef;
+      border: 1px dashed var(--border-dark);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+    .scenic-demo-btn {
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--spruce);
+      cursor: pointer;
+    }
+    .scenic-demo-btn:hover {
+      background: var(--spruce);
+      color: #fff;
+    }
+
+    /* Palette Drawer */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 280px;
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); }
+
+    @media (max-width: 900px) {
+      .scenic-hero-footer { grid-template-columns: 1fr; }
+      .scenic-workspace-grid { grid-template-columns: 1fr; }
+      .departure-steps-row { grid-template-columns: repeat(3, 1fr); }
+      .capsule-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 2A</span>
+      <strong>Nordic Scenic &amp; Floating Capsule</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Corridor Planner View
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sign In &amp; Account View
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid var(--border)">🎨 Swatches</button>
+      <a href="index.html">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- Floating Capsule Navbar (Inspired by Image 1) -->
+  <div class="capsule-nav-wrapper">
+    <nav class="capsule-navbar">
+      <a href="#" class="capsule-logo">
+        <div class="capsule-symbol">w</div>
+        <span>WeatherWay</span>
+      </a>
+
+      <div class="capsule-links">
+        <a href="#corridor">Corridors</a>
+        <a href="#scrubber">Departure Scrubber</a>
+        <a href="#sources">HRRR Forecasts</a>
+        <a href="#about">About</a>
+      </div>
+
+      <div class="capsule-auth">
+        <div class="capsule-user-pill" onclick="switchView('login')">
+          <div class="capsule-avatar-sm">AR</div>
+          <span>Alex Rivera</span>
+        </div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- VIEW 1: SCENIC CORRIDOR PLANNER -->
+  <div id="view-planner" class="view-container active">
+    <div class="scenic-container">
+
+      <!-- Scenic Hero Card with Landscape & Headline -->
+      <section class="scenic-hero-card">
+        <!-- Illustrative Scenic Atmosphere (Inspired by Farce) -->
+        <div class="scenic-illustration">
+          <svg class="landscape-svg" viewBox="0 0 1200 300" preserveAspectRatio="xMidYMid slice" fill="none">
+            <!-- Distant Hills -->
+            <path d="M0 240 Q 300 170 600 230 T 1200 210 L 1200 300 L 0 300 Z" fill="#9dbf9a" opacity="0.6"/>
+            <!-- Rolling Green Meadow -->
+            <path d="M0 260 Q 400 210 800 250 T 1200 240 L 1200 300 L 0 300 Z" fill="#608d5b" opacity="0.8"/>
+            <path d="M0 280 Q 500 240 1000 270 L 1200 265 L 1200 300 L 0 300 Z" fill="#426b3e"/>
+
+            <!-- Cumulus Clouds -->
+            <path d="M 650 120 Q 700 60 760 80 Q 820 40 880 70 Q 940 50 980 90 Q 1030 110 1010 160 Q 960 190 650 180 Z" fill="#ffffff" opacity="0.9"/>
+            <path d="M 200 140 Q 240 90 290 110 Q 340 80 390 110 Q 430 130 420 170 Q 370 190 200 180 Z" fill="#ffffff" opacity="0.85"/>
+
+            <!-- Distant Highway Route Ribbon -->
+            <path d="M 450 300 L 580 230 L 610 200" stroke="#f6f7f4" stroke-width="8" stroke-linecap="round" opacity="0.4"/>
+            <path d="M 450 300 L 580 230 L 610 200" stroke="#facc15" stroke-width="2" stroke-dasharray="6 6" opacity="0.7"/>
+
+            <!-- Roadside Trees -->
+            <ellipse cx="280" cy="230" rx="18" ry="42" fill="#294827"/>
+            <ellipse cx="310" cy="240" rx="14" ry="34" fill="#365e33"/>
+            <ellipse cx="880" cy="225" rx="16" ry="40" fill="#294827"/>
+            <ellipse cx="905" cy="235" rx="12" ry="30" fill="#365e33"/>
+          </svg>
+        </div>
+
+        <!-- Headline & Capsule Input -->
+        <div class="scenic-hero-footer">
+          <h1 class="scenic-hero-headline">
+            The weather moves.<br>
+            Plan your drive <em>around it.</em>
+          </h1>
+
+          <div class="scenic-hero-right">
+            <p class="scenic-hero-sub">
+              See high-resolution HRRR weather where you will be when you arrive, then scrub 5-minute departure windows to find the clearest road ahead.
+            </p>
+
+            <form class="scenic-search-capsule" onsubmit="event.preventDefault()">
+              <div class="capsule-inputs-inline">
+                <span>From</span>
+                <select>
+                  <option>Columbus, OH</option>
+                  <option>Cincinnati, OH</option>
+                  <option>Dayton, OH</option>
+                </select>
+                <span>→ To</span>
+                <select>
+                  <option>Cleveland, OH</option>
+                  <option>Akron, OH</option>
+                  <option>Toledo, OH</option>
+                </select>
+              </div>
+
+              <button class="capsule-submit-btn">
+                <span>Find Window</span>
+                <span>→</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Providers Strip -->
+      <div class="providers-strip">
+        <span>Grounded by live sources</span>
+        <div class="provider-badges">
+          <div class="provider-chip">NOAA HRRR 15-MIN</div>
+          <div class="provider-chip">OPEN-METEO API</div>
+          <div class="provider-chip">OSRM ROUTING</div>
+          <div class="provider-chip">ODOT OHGO SENSORS</div>
+        </div>
+      </div>
+
+      <!-- Main Workspace: Map & Checkpoint Details -->
+      <div class="scenic-workspace-grid">
+        <!-- Map Card -->
+        <div class="corridor-map-card">
+          <div class="card-topbar">
+            <div class="corridor-title-group">
+              <h3>Columbus → Cleveland Corridor</h3>
+              <p>Interstate 71 North · 143.2 miles · Travel time: 2h 14m</p>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 11px; background: var(--spruce-light); color: var(--spruce); padding: 4px 10px; border-radius: 9999px; font-weight: 600;">
+              RECOMMENDED: 3:15 PM ET
+            </div>
+          </div>
+
+          <div class="corridor-map-body">
+            <svg class="map-svg-full" viewBox="0 0 600 320" fill="none">
+              <!-- Route Path -->
+              <path d="M 90 260 L 180 220 L 280 165 L 400 110 L 510 50" stroke="#1c563e" stroke-width="4" stroke-linecap="round"/>
+              <path d="M 90 260 L 180 220 L 280 165 L 400 110 L 510 50" stroke="#1c563e" stroke-width="14" stroke-opacity="0.15" stroke-linecap="round"/>
+
+              <!-- Rain front indicator -->
+              <ellipse cx="280" cy="165" rx="50" ry="30" fill="rgba(217, 119, 6, 0.12)" stroke="rgba(217, 119, 6, 0.4)" stroke-dasharray="3 3"/>
+
+              <!-- Origin Marker -->
+              <circle cx="90" cy="260" r="7" fill="#ffffff" stroke="#1c563e" stroke-width="3"/>
+              <text x="105" y="265" fill="#142232" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Columbus (Mile 0)</text>
+
+              <!-- Checkpoints -->
+              <circle cx="180" cy="220" r="5" fill="#1c563e"/>
+              <!-- Selected: Mansfield -->
+              <circle cx="280" cy="165" r="9" fill="#ffffff" stroke="#d97706" stroke-width="3"/>
+              <circle cx="280" cy="165" r="4" fill="#d97706"/>
+              <text x="295" y="160" fill="#d97706" font-family="'Plus Jakarta Sans'" font-size="11" font-weight="700">Mansfield CP 04 (Selected)</text>
+
+              <circle cx="400" cy="110" r="5" fill="#1c563e"/>
+              <!-- Destination -->
+              <circle cx="510" cy="50" r="7" fill="#ffffff" stroke="#1c563e" stroke-width="3"/>
+              <text x="440" y="40" fill="#142232" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Cleveland (Mile 143)</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Checkpoint Detail Aside -->
+        <aside class="checkpoint-card-aside">
+          <div class="checkpoint-hdr">
+            <div>
+              <span style="font-size: 10px; font-family: var(--font-mono); color: var(--spruce); font-weight: 600;">CHECKPOINT 04 OF 10</span>
+              <h4>Mansfield Interchange</h4>
+            </div>
+            <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim);">ETA 4:02 PM</span>
+          </div>
+
+          <div class="checkpoint-metrics-list">
+            <div class="metric-cell-pill">
+              <span>Precipitation</span>
+              <strong style="color: var(--amber);">2.1 <small>mm/h</small></strong>
+            </div>
+            <div class="metric-cell-pill">
+              <span>Crosswind</span>
+              <strong>24 <small>km/h W</small></strong>
+            </div>
+            <div class="metric-cell-pill">
+              <span>Visibility</span>
+              <strong>4.8 <small>km</small></strong>
+            </div>
+            <div class="metric-cell-pill">
+              <span>Temperature</span>
+              <strong>12° <small>C (54°F)</small></strong>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--ink-dim); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 14px;">
+            Light rain cell is moving east toward Wooster. Departing at 3:15 PM places your arrival right after the main band clears.
+          </div>
+
+          <button class="capsule-submit-btn" style="justify-content: center; width: 100%;">
+            View Point Radar Forecast
+          </button>
+        </aside>
+      </div>
+
+      <!-- Departure Scrubber Deck -->
+      <section class="scenic-scrubber-deck">
+        <div class="scrubber-deck-hdr">
+          <div>
+            <h3>Departure Timing Comparison</h3>
+            <p style="font-size: 12px; color: var(--ink-dim);">Comparing 5-minute candidate departures across your 2-hour window</p>
+          </div>
+          <span style="font-size: 12px; font-weight: 600; color: var(--spruce); font-family: var(--font-mono);">
+            BEST WINDOW: 3:15 PM – 3:30 PM ET
+          </span>
+        </div>
+
+        <div class="departure-steps-row">
+          <div class="departure-step-card">
+            <div class="dep-time">2:30 PM</div>
+            <div class="dep-status rain">42 min rain</div>
+          </div>
+          <div class="departure-step-card">
+            <div class="dep-time">2:45 PM</div>
+            <div class="dep-status rain">36 min rain</div>
+          </div>
+          <div class="departure-step-card">
+            <div class="dep-time">3:00 PM</div>
+            <div class="dep-status caution">21 min rain</div>
+          </div>
+          <div class="departure-step-card active">
+            <div class="dep-time">3:15 PM ★</div>
+            <div class="dep-status clear">6 min clear</div>
+          </div>
+          <div class="departure-step-card">
+            <div class="dep-time">3:30 PM</div>
+            <div class="dep-status clear">8 min clear</div>
+          </div>
+          <div class="departure-step-card">
+            <div class="dep-time">3:45 PM</div>
+            <div class="dep-status caution">16 min rain</div>
+          </div>
+          <div class="departure-step-card">
+            <div class="dep-time">4:00 PM</div>
+            <div class="dep-status rain">34 min rain</div>
+          </div>
+        </div>
+
+        <div class="recommendation-ribbon">
+          <div class="ribbon-text">
+            <h4>Recommended Departure: 3:15 PM ET</h4>
+            <p>Saves 36 minutes of heavy precipitation compared with leaving at 2:30 PM. Estimated arrival in Cleveland at 5:29 PM ET.</p>
+          </div>
+          <button class="capsule-submit-btn" onclick="alert('3:15 PM departure selected!')">
+            Explore 3:15 PM Route
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- VIEW 2: AUTH / SIGN IN VIEW -->
+  <div id="view-login" class="view-container">
+    <div class="login-stage-scenic">
+      <div class="login-scenic-card">
+        <!-- Scenic mini header illustration -->
+        <div class="login-scenic-header-banner">
+          <svg class="landscape-svg" viewBox="0 0 500 140" preserveAspectRatio="xMidYMid slice" fill="none">
+            <path d="M0 110 Q 150 70 300 100 T 500 90 L 500 140 L 0 140 Z" fill="#608d5b"/>
+            <circle cx="360" cy="50" r="30" fill="#ffffff" opacity="0.85"/>
+            <circle cx="380" cy="55" r="22" fill="#ffffff" opacity="0.85"/>
+          </svg>
+          <div style="position: relative; z-index: 2; display: flex; align-items: center; gap: 8px;">
+            <div class="capsule-symbol">w</div>
+            <strong style="color: #fff; font-size: 16px;">WeatherWay Dispatch</strong>
+          </div>
+        </div>
+
+        <div class="login-scenic-body">
+          <h2 class="login-title-scenic">Access Your Travel Corridors</h2>
+          <p class="login-sub-scenic">Sign in to save Ohio route presets and receive proactive storm alerts</p>
+
+          <div class="scenic-tabs-pill">
+            <button id="scenic-tab-signin" class="scenic-tab-btn active" onclick="setScenicMode('signin')">Sign In</button>
+            <button id="scenic-tab-signup" class="scenic-tab-btn" onclick="setScenicMode('signup')">Create Account</button>
+          </div>
+
+          <div class="scenic-demo-box">
+            <span>Demo Dispatcher (Alex Rivera)</span>
+            <button type="button" class="scenic-demo-btn" onclick="fillScenicDemo()">Auto-fill</button>
+          </div>
+
+          <form onsubmit="handleScenicAuth(event)">
+            <div id="scenic-name-field" class="scenic-input-group" style="display: none;">
+              <label>Full Name</label>
+              <input type="text" id="scenic-name" placeholder="Alex Rivera">
+            </div>
+
+            <div class="scenic-input-group">
+              <label>Email Address</label>
+              <input type="email" id="scenic-email" required placeholder="alex@weatherway.app">
+            </div>
+
+            <div class="scenic-input-group">
+              <label>Password</label>
+              <input type="password" id="scenic-password" required placeholder="••••••••••••">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 12px; color: var(--ink-dim);">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" checked style="accent-color: var(--spruce);">
+                <span>Keep session active</span>
+              </label>
+              <a href="#" style="color: var(--spruce); text-decoration: none; font-weight: 600;">Reset password</a>
+            </div>
+
+            <button type="submit" class="capsule-submit-btn" style="width: 100%; justify-content: center; padding: 12px;">
+              <span id="scenic-submit-lbl">Sign In to WeatherWay</span>
+            </button>
+          </form>
+
+          <div style="margin-top: 20px; text-align: center;">
+            <button type="button" onclick="switchView('planner')" style="background: none; border: none; color: var(--ink-dim); font-size: 13px; cursor: pointer;">
+              ← Return to Corridor Planner
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px;">Palette Tokens</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; color: var(--ink-dim); cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Nordic scenic canvas with capsule black, spruce green, and sky mist.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #12161f;" title="#12161f Capsule Black"></div>
+      <div class="swatch-box" style="background: #ffffff;" title="#ffffff Pure Paper"></div>
+      <div class="swatch-box" style="background: #1c563e;" title="#1c563e Spruce Green"></div>
+      <div class="swatch-box" style="background: #b8d9ea;" title="#b8d9ea Sky Mist"></div>
+      <div class="swatch-box" style="background: #d97706;" title="#d97706 Amber"></div>
+      <div class="swatch-box" style="background: #be123c;" title="#be123c Brick"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setScenicMode(mode) {
+      document.getElementById('scenic-tab-signin').classList.toggle('active', mode === 'signin');
+      document.getElementById('scenic-tab-signup').classList.toggle('active', mode === 'signup');
+      document.getElementById('scenic-name-field').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('scenic-submit-lbl').innerText = mode === 'signup' ? 'Create WeatherWay Profile' : 'Sign In to WeatherWay';
+    }
+
+    function fillScenicDemo() {
+      setScenicMode('signin');
+      document.getElementById('scenic-email').value = 'alex@weatherway.app';
+      document.getElementById('scenic-password').value = 'neighborhood';
+    }
+
+    function handleScenicAuth(e) {
+      e.preventDefault();
+      alert('Welcome back, Alex Rivera! Signed into WeatherWay Dispatch.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

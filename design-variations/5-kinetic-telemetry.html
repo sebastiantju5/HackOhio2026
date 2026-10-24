@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 5: Tokyo Kinetic / Neo-Brutalist Telemetry — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --card: #ffffff;
+      --ink: #09090b;
+      --muted: #71717a;
+      --border: #18181b;
+      --yellow: #facc15;
+      --blue: #2563eb;
+      --red: #e11d48;
+      --green: #16a34a;
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Top Preview Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--ink);
+      color: #fff;
+      border-bottom: 2px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: var(--yellow);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 2px;
+    }
+    .preview-tabs {
+      display: flex;
+      background: #27272a;
+      padding: 2px;
+      border-radius: 4px;
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: var(--yellow);
+      color: var(--ink);
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: #e4e4e7;
+      text-decoration: none;
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+    .preview-actions a:hover { color: var(--yellow); }
+
+    /* View containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Header */
+    .kinetic-header {
+      background: var(--card);
+      border-bottom: 3px solid var(--border);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .kinetic-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .kinetic-badge {
+      background: var(--yellow);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 18px;
+      padding: 4px 10px;
+      box-shadow: 3px 3px 0 var(--border);
+    }
+    .kinetic-title-box h1 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: -0.5px;
+    }
+    .kinetic-user-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 2px solid var(--border);
+      padding: 6px 14px;
+      box-shadow: 3px 3px 0 var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .kinetic-user-tag:hover {
+      background: var(--yellow);
+    }
+
+    /* Layout */
+    .kinetic-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: calc(100vh - 120px);
+    }
+    .kinetic-sidebar {
+      background: #fafafa;
+      border-right: 3px solid var(--border);
+      padding: 30px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .kinetic-kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: var(--border);
+      color: var(--yellow);
+      padding: 3px 8px;
+      display: inline-block;
+      width: fit-content;
+    }
+    .kinetic-sidebar h2 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+    .kinetic-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .kinetic-input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kinetic-input-box label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .kinetic-input-box select, .kinetic-input-box input {
+      background: #fff;
+      border: 2px solid var(--border);
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+      box-shadow: 3px 3px 0 var(--border);
+    }
+    .kinetic-input-box select:focus, .kinetic-input-box input:focus {
+      background: #fef9c3;
+    }
+    .kinetic-btn {
+      background: var(--yellow);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 var(--border);
+      transition: all 0.1s;
+      text-transform: uppercase;
+    }
+    .kinetic-btn:hover {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 var(--border);
+    }
+
+    /* Main Workspace */
+    .kinetic-workspace {
+      padding: 30px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .corridor-banner-brutal {
+      background: var(--card);
+      border: 3px solid var(--border);
+      padding: 18px 24px;
+      box-shadow: 5px 5px 0 var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .route-headline-brutal {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    /* Map + Telemetry */
+    .kinetic-content-row {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+    }
+    .kinetic-map-card {
+      background: #fff;
+      border: 3px solid var(--border);
+      box-shadow: 5px 5px 0 var(--border);
+      position: relative;
+      overflow: hidden;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .kinetic-map-svg {
+      width: 100%;
+      max-width: 580px;
+      height: 320px;
+    }
+
+    .kinetic-telemetry-box {
+      background: #fff;
+      border: 3px solid var(--border);
+      box-shadow: 5px 5px 0 var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .kinetic-telemetry-header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .telemetry-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .telemetry-table tr {
+      border-bottom: 1px solid #e4e4e7;
+    }
+    .telemetry-table td {
+      padding: 10px 0;
+    }
+    .telemetry-table td:last-child {
+      text-align: right;
+      font-weight: 700;
+    }
+
+    /* Scrubber Deck */
+    .kinetic-scrubber-deck {
+      background: #fff;
+      border: 3px solid var(--border);
+      box-shadow: 5px 5px 0 var(--border);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .kinetic-bars {
+      display: flex;
+      gap: 6px;
+      height: 52px;
+      align-items: flex-end;
+    }
+    .kinetic-bar {
+      flex: 1;
+      background: #e4e4e7;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .kinetic-bar.active {
+      background: var(--yellow);
+      border-width: 3px;
+    }
+    .kinetic-bar.caution {
+      background: #fde047;
+    }
+    .kinetic-bar.danger {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* LOGIN VIEW (Tokyo Kinetic) */
+    .login-stage-brutal {
+      min-height: calc(100vh - 60px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .login-card-brutal {
+      width: 100%;
+      max-width: 460px;
+      background: #fff;
+      border: 4px solid var(--border);
+      box-shadow: 8px 8px 0 var(--border);
+      padding: 38px 34px;
+    }
+    .brutal-icon-box {
+      width: 52px;
+      height: 52px;
+      background: var(--yellow);
+      border: 3px solid var(--border);
+      box-shadow: 3px 3px 0 var(--border);
+      display: grid;
+      place-content: center;
+      margin: 0 auto 16px;
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .brutal-tab-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 2px solid var(--border);
+      margin-bottom: 22px;
+    }
+    .brutal-tab-btn {
+      padding: 10px;
+      border: none;
+      background: #fff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .brutal-tab-btn.active {
+      background: var(--yellow);
+    }
+    .brutal-form-group {
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .brutal-form-group label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .brutal-form-group input {
+      border: 2px solid var(--border);
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 3px 3px 0 var(--border);
+      outline: none;
+    }
+
+    /* Palette Drawer */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #fff;
+      border: 3px solid var(--border);
+      padding: 16px;
+      box-shadow: 5px 5px 0 var(--border);
+      width: 280px;
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border: 2px solid var(--border); }
+
+    @media (max-width: 900px) {
+      .kinetic-grid { grid-template-columns: 1fr; }
+      .kinetic-content-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 5 / 5</span>
+      <strong>Tokyo Kinetic &amp; Neo-Brutalist Telemetry</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        MAIN PLANNER
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        SIGN IN / AUTH
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid var(--border)">SWATCHES</button>
+      <a href="index.html">← OVERVIEW</a>
+    </div>
+  </header>
+
+  <!-- VIEW 1: MAIN KINETIC PLANNER -->
+  <div id="view-planner" class="view-container active">
+    <header class="kinetic-header">
+      <a href="#" class="kinetic-brand">
+        <div class="kinetic-badge">WW</div>
+        <div class="kinetic-title-box">
+          <h1>WeatherWay</h1>
+        </div>
+      </a>
+
+      <div class="kinetic-user-tag" onclick="switchView('login')">
+        <span style="display: inline-block; width: 10px; height: 10px; background: var(--green);"></span>
+        <span>USER: ALEX RIVERA [ACTIVE]</span>
+      </div>
+    </header>
+
+    <div class="kinetic-grid">
+      <!-- Sidebar -->
+      <aside class="kinetic-sidebar">
+        <div>
+          <span class="kinetic-kicker">DISPATCH_TERMINAL_01</span>
+          <h2>ROUTE &amp; WEATHER CORRIDOR</h2>
+          <p style="font-size: 13px; color: var(--muted); margin-top: 8px; font-family: var(--font-mono);">
+            PRECISION ARRIVAL-MATCHED POINT FORECAST
+          </p>
+        </div>
+
+        <form class="kinetic-form" onsubmit="event.preventDefault()">
+          <div class="kinetic-input-box">
+            <label>ORIGIN [START]</label>
+            <select>
+              <option>COLUMBUS, OH (I-71)</option>
+              <option>CINCINNATI, OH (I-75)</option>
+              <option>DAYTON, OH</option>
+            </select>
+          </div>
+
+          <div class="kinetic-input-box">
+            <label>DESTINATION [TERMINAL]</label>
+            <select>
+              <option>CLEVELAND, OH (LAKE ERIE)</option>
+              <option>AKRON, OH</option>
+              <option>TOLEDO, OH</option>
+            </select>
+          </div>
+
+          <div class="kinetic-input-box">
+            <label>DEPARTURE START</label>
+            <input type="datetime-local" value="2026-10-24T14:30">
+          </div>
+
+          <div class="kinetic-input-box">
+            <label>DEPARTURE END</label>
+            <input type="datetime-local" value="2026-10-24T16:30">
+          </div>
+
+          <button class="kinetic-btn">
+            ANALYZE EXPOSURE →
+          </button>
+        </form>
+
+        <div style="background: var(--yellow); border: 2px solid var(--border); padding: 12px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; box-shadow: 3px 3px 0 var(--border);">
+          RECOMMENDATION: 3:15 PM DEPARTURE MINIMIZES CORRIDOR RAIN TO 6 MINUTES.
+        </div>
+      </aside>
+
+      <!-- Main Workspace -->
+      <main class="kinetic-workspace">
+        <div class="corridor-banner-brutal">
+          <div>
+            <span class="kinetic-kicker">CORRIDOR STATUS</span>
+            <div class="route-headline-brutal">COLUMBUS → CLEVELAND</div>
+          </div>
+          <div style="background: var(--yellow); border: 2px solid var(--border); padding: 8px 14px; font-family: var(--font-mono); font-size: 13px; font-weight: 700;">
+            OPTIMAL: 15:15 ET
+          </div>
+        </div>
+
+        <!-- Map & Telemetry Row -->
+        <div class="kinetic-content-row">
+          <div class="kinetic-map-card">
+            <svg class="kinetic-map-svg" viewBox="0 0 560 300" fill="none">
+              <!-- Route -->
+              <path d="M 80 250 L 170 210 L 260 160 L 370 110 L 460 50" stroke="#09090b" stroke-width="6" stroke-linecap="square"/>
+              <path d="M 80 250 L 170 210 L 260 160 L 370 110 L 460 50" stroke="#facc15" stroke-width="14" stroke-opacity="0.3" stroke-linecap="square"/>
+
+              <!-- Markers -->
+              <rect x="72" y="242" width="16" height="16" fill="#09090b"/>
+              <text x="96" y="254" fill="#09090b" font-family="'IBM Plex Mono'" font-size="12" font-weight="700">COLUMBUS</text>
+
+              <rect x="164" y="204" width="12" height="12" fill="#16a34a"/>
+              
+              <!-- Mansfield Selected -->
+              <rect x="252" y="152" width="18" height="18" fill="#facc15" stroke="#09090b" stroke-width="3"/>
+              <text x="278" y="166" fill="#09090b" font-family="'IBM Plex Mono'" font-size="12" font-weight="700">MANSFIELD [CP-04]</text>
+
+              <rect x="364" y="104" width="12" height="12" fill="#16a34a"/>
+              
+              <rect x="452" y="42" width="16" height="16" fill="#09090b"/>
+              <text x="370" y="38" fill="#09090b" font-family="'IBM Plex Mono'" font-size="12" font-weight="700">CLEVELAND</text>
+            </svg>
+          </div>
+
+          <div class="kinetic-telemetry-box">
+            <div class="kinetic-telemetry-header">
+              <span class="kinetic-kicker">CHECKPOINT DATA</span>
+              <h3 style="font-family: var(--font-display); font-size: 20px; font-weight: 800; margin-top: 4px;">MANSFIELD INTERCHANGE</h3>
+              <p style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">ARRIVAL: 16:02 ET</p>
+            </div>
+
+            <table class="telemetry-table">
+              <tr>
+                <td>PRECIPITATION</td>
+                <td style="color: var(--blue);">2.1 MM/H</td>
+              </tr>
+              <tr>
+                <td>CROSSWIND</td>
+                <td>27 KM/H</td>
+              </tr>
+              <tr>
+                <td>VISIBILITY</td>
+                <td>4.8 KM</td>
+              </tr>
+              <tr>
+                <td>AIR TEMP</td>
+                <td>12°C / 54°F</td>
+              </tr>
+            </table>
+
+            <button class="kinetic-btn" style="padding: 10px; font-size: 12px; background: #fff;">
+              FULL TELEMETRY LOG
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrubber -->
+        <div class="kinetic-scrubber-deck">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-family: var(--font-mono); font-size: 14px; font-weight: 700;">DEPARTURE CANDIDATES [5-MIN STEP]</strong>
+            <span style="font-family: var(--font-mono); font-size: 12px; background: var(--yellow); padding: 2px 6px; border: 1px solid var(--border);">RECOMMENDED: 15:15</span>
+          </div>
+
+          <div class="kinetic-bars">
+            <div class="kinetic-bar danger" style="height: 44px;" title="14:30: 42m exposure"></div>
+            <div class="kinetic-bar danger" style="height: 38px;" title="14:45: 36m exposure"></div>
+            <div class="kinetic-bar caution" style="height: 26px;" title="15:00: 20m exposure"></div>
+            <div class="kinetic-bar active" style="height: 12px;" title="15:15: 6m exposure [BEST]"></div>
+            <div class="kinetic-bar" style="height: 14px;" title="15:30: 8m exposure"></div>
+            <div class="kinetic-bar caution" style="height: 22px;" title="15:45: 18m exposure"></div>
+            <div class="kinetic-bar danger" style="height: 38px;" title="16:00: 34m exposure"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; font-weight: 600;">
+            <span>14:30 ET</span>
+            <span style="background: var(--yellow); padding: 0 4px;">15:15 ET [SELECTED]</span>
+            <span>16:00 ET</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VIEW 2: AUTH / SIGN IN -->
+  <div id="view-login" class="view-container">
+    <div class="login-stage-brutal">
+      <div class="login-card-brutal">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div class="brutal-icon-box">W</div>
+          <h2 style="font-family: var(--font-display); font-size: 26px; font-weight: 800; text-transform: uppercase;">WEATHERWAY ACCESS</h2>
+          <p style="font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 4px;">SECURE CORRIDOR SYNCHRONIZATION</p>
+        </div>
+
+        <div class="brutal-tab-switch">
+          <button id="btn-brutal-signin" class="brutal-tab-btn active" onclick="setBrutalAuth('signin')">SIGN IN</button>
+          <button id="btn-brutal-signup" class="brutal-tab-btn" onclick="setBrutalAuth('signup')">CREATE ACCOUNT</button>
+        </div>
+
+        <div style="background: #fef9c3; border: 2px solid var(--border); padding: 10px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700;">
+          <span>DEMO [ALEX RIVERA]</span>
+          <button type="button" onclick="fillBrutalDemo()" style="background: var(--border); color: var(--yellow); border: none; padding: 4px 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; cursor: pointer;">FILL</button>
+        </div>
+
+        <form onsubmit="handleBrutalAuth(event)">
+          <div id="brutal-name-field" class="brutal-form-group" style="display: none;">
+            <label>OPERATOR NAME</label>
+            <input type="text" id="brutal-name" placeholder="ALEX RIVERA">
+          </div>
+
+          <div class="brutal-form-group">
+            <label>EMAIL IDENTIFIER</label>
+            <input type="email" id="brutal-email" required placeholder="alex@weatherway.app">
+          </div>
+
+          <div class="brutal-form-group">
+            <label>ACCESS KEY / PASSWORD</label>
+            <input type="password" id="brutal-password" required placeholder="••••••••••••">
+          </div>
+
+          <button type="submit" class="kinetic-btn" style="width: 100%; margin-top: 10px;">
+            <span id="brutal-btn-text">AUTHENTICATE →</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <button type="button" onclick="switchView('planner')" style="background: none; border: none; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer;">
+            ← RETURN TO PLANNER
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px; font-family: var(--font-mono);">PALETTE TOKENS</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono);">High-contrast neo-brutalist telemetry with safety yellow.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #ffffff;" title="#ffffff White"></div>
+      <div class="swatch-box" style="background: #09090b;" title="#09090b Carbon"></div>
+      <div class="swatch-box" style="background: #facc15;" title="#facc15 Safety Yellow"></div>
+      <div class="swatch-box" style="background: #2563eb;" title="#2563eb Blue"></div>
+      <div class="swatch-box" style="background: #e11d48;" title="#e11d48 Red Alert"></div>
+      <div class="swatch-box" style="background: #16a34a;" title="#16a34a Green"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setBrutalAuth(mode) {
+      document.getElementById('btn-brutal-signin').classList.toggle('active', mode === 'signin');
+      document.getElementById('btn-brutal-signup').classList.toggle('active', mode === 'signup');
+      document.getElementById('brutal-name-field').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('brutal-btn-text').innerText = mode === 'signup' ? 'CREATE PROFILE →' : 'AUTHENTICATE →';
+    }
+
+    function fillBrutalDemo() {
+      setBrutalAuth('signin');
+      document.getElementById('brutal-email').value = 'alex@weatherway.app';
+      document.getElementById('brutal-password').value = 'neighborhood';
+    }
+
+    function handleBrutalAuth(e) {
+      e.preventDefault();
+      alert('Authenticated! Returning to WeatherWay terminal.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

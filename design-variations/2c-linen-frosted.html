@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 2C: Linen Atlas &amp; Frosted Telemetry — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --linen: #f5f4ef;
+      --paper: #ffffff;
+      --paper-subtle: #eae9e2;
+      --ink: #111e2e;
+      --ink-dim: #435467;
+      --ink-muted: #748699;
+      --spruce: #18583e;
+      --spruce-light: #e0eee7;
+      --fjord: #1e3a54;
+      --amber: #d97706;
+      --terracotta: #9e3a2b;
+      --terracotta-light: #fbeee9;
+      --border: #d7d5cb;
+      --border-dark: #b8b5a6;
+      --glass: rgba(255, 255, 255, 0.82);
+      --glass-border: rgba(255, 255, 255, 0.6);
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--linen);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 10% 15%, rgba(158, 58, 43, 0.04) 0%, transparent 45%),
+        radial-gradient(circle at 90% 85%, rgba(24, 88, 62, 0.05) 0%, transparent 45%);
+    }
+
+    /* Top Preview Navigation Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(245, 244, 239, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: var(--spruce-light);
+      color: var(--spruce);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .preview-tabs {
+      display: flex;
+      background: #e5e4dc;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: var(--ink-dim);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: var(--ink-dim);
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-actions a:hover { color: var(--spruce); }
+
+    /* Page View Containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Floating Frosted Capsule Navbar */
+    .frosted-capsule-wrap {
+      padding: 24px 20px 10px;
+      display: flex;
+      justify-content: center;
+    }
+    .frosted-capsule {
+      background: var(--glass);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      border-radius: 9999px;
+      padding: 8px 12px 8px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      max-width: 980px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(17, 30, 46, 0.06), 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .frosted-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .brand-seal-nordic {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--spruce);
+      color: #fff;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 16px;
+      display: grid;
+      place-content: center;
+    }
+    .frosted-nav-links {
+      display: flex;
+      gap: 24px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .frosted-nav-links a {
+      color: var(--ink-dim);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .frosted-nav-links a:hover { color: var(--ink); }
+    .frosted-user-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: all 0.2s;
+    }
+    .frosted-user-btn:hover {
+      border-color: var(--spruce);
+    }
+
+    /* Container */
+    .studio-layout {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 28px 60px;
+    }
+
+    /* Studio Hero */
+    .studio-hero {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 36px;
+      align-items: flex-end;
+      margin-bottom: 32px;
+      padding: 20px 0;
+    }
+    .studio-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(34px, 4vw, 50px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--ink);
+    }
+    .studio-headline em {
+      font-style: italic;
+      color: var(--spruce);
+      font-weight: 500;
+    }
+    .studio-hero-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .studio-hero-desc {
+      font-size: 14px;
+      color: var(--ink-dim);
+      line-height: 1.6;
+    }
+    .studio-input-capsule {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 6px 6px 6px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(17, 30, 46, 0.04);
+    }
+    .capsule-selectors {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .capsule-selectors select {
+      background: transparent;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      outline: none;
+      cursor: pointer;
+    }
+    .studio-cta-btn {
+      background: var(--spruce);
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .studio-cta-btn:hover { background: #124530; }
+
+    /* Main Corridor Studio Workspace */
+    .studio-workspace-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(17, 30, 46, 0.04);
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      min-height: 480px;
+      margin-bottom: 28px;
+    }
+    .studio-map-pane {
+      background: #eef2ec;
+      padding: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .studio-map-svg {
+      width: 100%;
+      max-width: 600px;
+      height: 340px;
+    }
+
+    /* Floating Frosted Checkpoint Inspector (Inspired by Image 2's frosted glass layers) */
+    .floating-frosted-inspector {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 12px 28px rgba(17, 30, 46, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .frosted-metric-block {
+      display: flex;
+      flex-direction: column;
+    }
+    .frosted-metric-block span {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--ink-dim);
+    }
+    .frosted-metric-block strong {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    /* Studio Details Sidebar */
+    .studio-details-sidebar {
+      background: #fafbfa;
+      border-left: 1px solid var(--border);
+      padding: 32px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .sidebar-station-title {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .station-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--terracotta-light);
+      color: var(--terracotta);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      width: fit-content;
+    }
+    .station-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .station-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+    .station-table td {
+      padding: 10px 0;
+      color: var(--ink-dim);
+    }
+    .station-table td:last-child {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    /* Scrubber Deck (Linen & Frosted) */
+    .studio-scrubber-deck {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px 32px;
+      box-shadow: 0 8px 30px rgba(17, 30, 46, 0.04);
+    }
+    .scrubber-pills-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .scrubber-pill-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #fafbfa;
+      transition: all 0.2s;
+    }
+    .scrubber-pill-item:hover, .scrubber-pill-item.active {
+      border-color: var(--spruce);
+      background: var(--spruce-light);
+      box-shadow: 0 4px 12px rgba(24, 88, 62, 0.1);
+    }
+
+    /* VIEW 2: AUTH / LOGIN VIEW */
+    .login-stage-studio {
+      min-height: calc(100vh - 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .login-studio-card {
+      width: 100%;
+      max-width: 460px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 38px 34px;
+      box-shadow: 0 16px 40px rgba(17, 30, 46, 0.08);
+      position: relative;
+    }
+    .pinned-studio-tag {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: var(--spruce-light);
+      color: var(--spruce);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+    .studio-tab-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #f1f0ea;
+      padding: 3px;
+      border-radius: 9999px;
+      margin: 20px 0;
+    }
+    .studio-tab-btn {
+      padding: 8px;
+      background: transparent;
+      border: none;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      cursor: pointer;
+    }
+    .studio-tab-btn.active {
+      background: #ffffff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .studio-field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .studio-field-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-dim);
+    }
+    .studio-field-group input {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      background: #fafbfa;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .studio-field-group input:focus {
+      border-color: var(--spruce);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(24, 88, 62, 0.12);
+    }
+
+    /* Palette Drawer */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 280px;
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); }
+
+    @media (max-width: 900px) {
+      .studio-hero { grid-template-columns: 1fr; }
+      .studio-workspace-card { grid-template-columns: 1fr; }
+      .studio-details-sidebar { border-left: none; border-top: 1px solid var(--border); }
+      .scrubber-pills-row { grid-template-columns: repeat(3, 1fr); }
+      .floating-frosted-inspector { display: none; }
+      .frosted-nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 2C</span>
+      <strong>Linen Atlas &amp; Frosted Telemetry</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Studio Planner View
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sign In &amp; Account View
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid var(--border)">🎨 Swatches</button>
+      <a href="index.html">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- Floating Frosted Capsule (Inspired by Image 1 + Image 2) -->
+  <div class="frosted-capsule-wrap">
+    <nav class="frosted-capsule">
+      <a href="#" class="frosted-brand">
+        <div class="brand-seal-nordic">w</div>
+        <span>WeatherWay Studio</span>
+      </a>
+
+      <div class="frosted-nav-links">
+        <a href="#corridors">Ohio Corridors</a>
+        <a href="#scrubber">Departure Matrix</a>
+        <a href="#radar">Point Forecasts</a>
+        <a href="#dispatch">Dispatch Hub</a>
+      </div>
+
+      <div class="frosted-user-btn" onclick="switchView('login')">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--spruce);"></span>
+        <span>Alex Rivera (Dispatch #402)</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- VIEW 1: STUDIO PLANNER VIEW -->
+  <div id="view-planner" class="view-container active">
+    <div class="studio-layout">
+
+      <!-- Studio Hero Block -->
+      <section class="studio-hero">
+        <h1 class="studio-headline">
+          The forecast where you will be, <em>when you arrive.</em>
+        </h1>
+
+        <div class="studio-hero-right">
+          <p class="studio-hero-desc">
+            Pairing dynamic highway coordinates with NOAA HRRR point forecasts at 15-minute intervals. Scrub departures to minimize precipitation exposure.
+          </p>
+
+          <form class="studio-input-capsule" onsubmit="event.preventDefault()">
+            <div class="capsule-selectors">
+              <span>From</span>
+              <select>
+                <option>Columbus, OH</option>
+                <option>Cincinnati, OH</option>
+                <option>Dayton, OH</option>
+              </select>
+              <span>→ To</span>
+              <select>
+                <option>Cleveland, OH</option>
+                <option>Akron, OH</option>
+                <option>Toledo, OH</option>
+              </select>
+            </div>
+
+            <button class="studio-cta-btn">
+              <span>Evaluate</span>
+              <span>→</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Main Corridor Workspace Card -->
+      <div class="studio-workspace-card">
+        <div class="studio-map-pane">
+          <!-- SVG Map Route -->
+          <svg class="studio-map-svg" viewBox="0 0 600 320" fill="none">
+            <path d="M 80 250 L 180 205 L 280 155 L 400 105 L 510 45" stroke="#18583e" stroke-width="4.5" stroke-linecap="round"/>
+            <path d="M 80 250 L 180 205 L 280 155 L 400 105 L 510 45" stroke="#18583e" stroke-width="14" stroke-opacity="0.15" stroke-linecap="round"/>
+
+            <!-- Mansfield Rain zone -->
+            <ellipse cx="280" cy="155" rx="55" ry="32" fill="rgba(158, 58, 43, 0.08)" stroke="rgba(158, 58, 43, 0.3)" stroke-dasharray="4 4"/>
+
+            <circle cx="80" cy="250" r="7" fill="#ffffff" stroke="#18583e" stroke-width="3"/>
+            <text x="95" y="255" fill="#111e2e" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Columbus Origin</text>
+
+            <circle cx="180" cy="205" r="5" fill="#18583e"/>
+            <!-- Selected Point -->
+            <circle cx="280" cy="155" r="9" fill="#ffffff" stroke="#d97706" stroke-width="3"/>
+            <circle cx="280" cy="155" r="4" fill="#d97706"/>
+            <text x="295" y="150" fill="#d97706" font-family="'Plus Jakarta Sans'" font-size="11" font-weight="700">Mansfield CP (Selected)</text>
+
+            <circle cx="400" cy="105" r="5" fill="#18583e"/>
+            <circle cx="510" cy="45" r="7" fill="#ffffff" stroke="#18583e" stroke-width="3"/>
+            <text x="440" y="38" fill="#111e2e" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Cleveland</text>
+          </svg>
+
+          <!-- Floating Frosted Telemetry Inspector (Inspired by Image 2's frosted glass layers) -->
+          <div class="floating-frosted-inspector">
+            <div class="frosted-metric-block">
+              <span>PREDICTION</span>
+              <strong style="color: var(--amber);">2.1 mm/h Rain</strong>
+            </div>
+            <div style="width: 1px; height: 32px; background: var(--border);"></div>
+            <div class="frosted-metric-block">
+              <span>CROSSWIND</span>
+              <strong>24 km/h West</strong>
+            </div>
+            <div style="width: 1px; height: 32px; background: var(--border);"></div>
+            <div class="frosted-metric-block">
+              <span>VISIBILITY</span>
+              <strong>4.8 km</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Studio Details Sidebar -->
+        <aside class="studio-details-sidebar">
+          <div>
+            <span class="station-badge">CP 04 · MILE 68.2</span>
+            <h3 class="sidebar-station-title" style="margin-top: 6px;">Mansfield Interchange</h3>
+            <p style="font-size: 12px; color: var(--ink-dim); margin-top: 2px;">Arrival: 4:02 PM ET</p>
+          </div>
+
+          <table class="station-table">
+            <tr>
+              <td>Point Forecast</td>
+              <td style="color: var(--amber);">Light Rain</td>
+            </tr>
+            <tr>
+              <td>Crosswind Vector</td>
+              <td>24 km/h</td>
+            </tr>
+            <tr>
+              <td>Air Temperature</td>
+              <td>12°C (54°F)</td>
+            </tr>
+            <tr>
+              <td>Surface Grip</td>
+              <td>Damp · Stable</td>
+            </tr>
+          </table>
+
+          <div style="background: var(--spruce-light); border-radius: 10px; padding: 12px; font-size: 12px; color: var(--spruce);">
+            <strong>Optimal Timing:</strong> Waiting for the 3:15 PM departure saves 36 minutes of rain.
+          </div>
+
+          <button class="studio-cta-btn" style="width: 100%; justify-content: center; padding: 12px;">
+            Lock 3:15 PM Window
+          </button>
+        </aside>
+      </div>
+
+      <!-- Departure Scrubber Deck -->
+      <section class="studio-scrubber-deck">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <div>
+            <h3 style="font-family: var(--font-serif); font-size: 20px;">Departure Window Evaluation</h3>
+            <p style="font-size: 12px; color: var(--ink-dim);">5-minute increments evaluated against the moving weather front</p>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--spruce); font-weight: 600;">
+            RECOMMENDED: 3:15 PM ET (6 MIN EXPOSURE)
+          </span>
+        </div>
+
+        <div class="scrubber-pills-row">
+          <div class="scrubber-pill-item">
+            <div style="font-weight: 700; font-size: 13px;">2:30 PM</div>
+            <div style="font-size: 11px; color: var(--terracotta); font-family: var(--font-mono); margin-top: 4px;">42 min rain</div>
+          </div>
+          <div class="scrubber-pill-item">
+            <div style="font-weight: 700; font-size: 13px;">2:45 PM</div>
+            <div style="font-size: 11px; color: var(--terracotta); font-family: var(--font-mono); margin-top: 4px;">36 min rain</div>
+          </div>
+          <div class="scrubber-pill-item">
+            <div style="font-weight: 700; font-size: 13px;">3:00 PM</div>
+            <div style="font-size: 11px; color: var(--amber); font-family: var(--font-mono); margin-top: 4px;">21 min rain</div>
+          </div>
+          <div class="scrubber-pill-item active">
+            <div style="font-weight: 700; font-size: 13px; color: var(--spruce);">3:15 PM ★</div>
+            <div style="font-size: 11px; color: var(--spruce); font-family: var(--font-mono); margin-top: 4px;">6 min clear</div>
+          </div>
+          <div class="scrubber-pill-item">
+            <div style="font-weight: 700; font-size: 13px;">3:30 PM</div>
+            <div style="font-size: 11px; color: var(--spruce); font-family: var(--font-mono); margin-top: 4px;">8 min clear</div>
+          </div>
+          <div class="scrubber-pill-item">
+            <div style="font-weight: 700; font-size: 13px;">3:45 PM</div>
+            <div style="font-size: 11px; color: var(--amber); font-family: var(--font-mono); margin-top: 4px;">16 min rain</div>
+          </div>
+          <div class="scrubber-pill-item">
+            <div style="font-weight: 700; font-size: 13px;">4:00 PM</div>
+            <div style="font-size: 11px; color: var(--terracotta); font-family: var(--font-mono); margin-top: 4px;">34 min rain</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- VIEW 2: AUTH / SIGN IN -->
+  <div id="view-login" class="view-container">
+    <div class="login-stage-studio">
+      <div class="login-studio-card">
+        <span class="pinned-studio-tag">DISPATCH HUB</span>
+        
+        <div style="margin-bottom: 24px;">
+          <div class="brand-seal-nordic" style="margin-bottom: 12px; width: 34px; height: 34px; font-size: 20px;">w</div>
+          <h2 style="font-family: var(--font-serif); font-size: 28px; font-weight: 500; color: var(--ink);">Sign In to WeatherWay</h2>
+          <p style="font-size: 13px; color: var(--ink-dim); margin-top: 4px;">Manage preferred travel corridors and departure thresholds</p>
+        </div>
+
+        <div class="studio-tab-switch">
+          <button id="studio-tab-in" class="studio-tab-btn active" onclick="setStudioMode('signin')">Sign In</button>
+          <button id="studio-tab-up" class="studio-tab-btn" onclick="setStudioMode('signup')">Create Account</button>
+        </div>
+
+        <!-- 1-Click Demo -->
+        <div style="background: var(--linen); border: 1px dashed var(--border-dark); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span>Demo Dispatcher (Alex Rivera)</span>
+          <button type="button" onclick="fillStudioDemo()" style="background: #fff; border: 1px solid var(--border); border-radius: 9999px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--spruce); cursor: pointer;">Auto-fill</button>
+        </div>
+
+        <form onsubmit="handleStudioAuth(event)">
+          <div id="studio-name-group" class="studio-field-group" style="display: none;">
+            <label>Dispatcher Name</label>
+            <input type="text" id="studio-name" placeholder="Alex Rivera">
+          </div>
+
+          <div class="studio-field-group">
+            <label>Email Address</label>
+            <input type="email" id="studio-email" required placeholder="alex@weatherway.app">
+          </div>
+
+          <div class="studio-field-group">
+            <label>Password</label>
+            <input type="password" id="studio-pass" required placeholder="••••••••••••">
+          </div>
+
+          <button type="submit" class="studio-cta-btn" style="width: 100%; justify-content: center; padding: 12px; margin-top: 8px;">
+            <span id="studio-submit-lbl">Sign In to WeatherWay</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <button type="button" onclick="switchView('planner')" style="background: none; border: none; color: var(--ink-dim); font-size: 13px; cursor: pointer; text-decoration: underline;">
+            ← Return to Studio Planner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px;">Studio Palette Tokens</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; color: var(--ink-dim); cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Cool linen canvas, frosted glass, spruce green, and muted terracotta.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #f5f4ef;" title="#f5f4ef Linen Canvas"></div>
+      <div class="swatch-box" style="background: #ffffff;" title="#ffffff Pure Paper"></div>
+      <div class="swatch-box" style="background: #18583e;" title="#18583e Spruce Green"></div>
+      <div class="swatch-box" style="background: #9e3a2b;" title="#9e3a2b Terracotta Accent"></div>
+      <div class="swatch-box" style="background: #d97706;" title="#d97706 Warning"></div>
+      <div class="swatch-box" style="background: #111e2e;" title="#111e2e Fjord Navy"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setStudioMode(mode) {
+      document.getElementById('studio-tab-in').classList.toggle('active', mode === 'signin');
+      document.getElementById('studio-tab-up').classList.toggle('active', mode === 'signup');
+      document.getElementById('studio-name-group').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('studio-submit-lbl').innerText = mode === 'signup' ? 'Register Studio Profile' : 'Sign In to WeatherWay';
+    }
+
+    function fillStudioDemo() {
+      setStudioMode('signin');
+      document.getElementById('studio-email').value = 'alex@weatherway.app';
+      document.getElementById('studio-pass').value = 'neighborhood';
+    }
+
+    function handleStudioAuth(e) {
+      e.preventDefault();
+      alert('Welcome back, Alex Rivera! Signed into WeatherWay Studio.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

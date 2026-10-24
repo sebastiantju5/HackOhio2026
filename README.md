@@ -1,84 +1,118 @@
-# Weatherway · HackOhio 2026
+# WeatherWay · HackOhio 2026
 
-A spatio-temporal road-trip weather planner built with React/Vite, Leaflet, and Flask. Compare weather at estimated route-checkpoint arrival times, then scrub departure times to find a lower-exposure window.
+A spatio-temporal road-trip weather planner built with React/Vite, Leaflet, Flask, and PostgreSQL. Compare weather at estimated route-checkpoint arrival times, then scrub departure times to find a lower-exposure window.
 
-## Run locally (PowerShell)
+Styled in the **Terracotta Immersive Editorial** design system with a floating capsule navigation bar, high-contrast serif typography, unified bone folio workspace, and integrated account authentication.
 
-From the repository root:
+---
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r Backend/requirements.txt
-.\.venv\Scripts\python.exe Backend/app.py
+## Quickstart
+
+### 1. Start the PostgreSQL Database (Docker Compose)
+
+From the repository root, start the containerized PostgreSQL database:
+
+```bash
+docker compose up -d
 ```
 
-In another terminal:
+*(On Windows PowerShell: `docker compose up -d`)*
 
-```powershell
+- Uses PostgreSQL 16 Alpine on port `5433` (preventing conflicts with any local PostgreSQL on port `5432`).
+- Automatically initializes table schemas (`accounts` and `sessions`) and seeds the demo account on first start.
+- Persists data to the `postgres_data` volume.
+
+To check container health:
+```bash
+docker compose ps
+```
+
+### 2. Run the Backend (`uv`)
+
+Using [`uv`](https://docs.astral.sh/uv/):
+
+```bash
+uv run python Backend/app.py
+```
+
+*(Or on Windows PowerShell: `uv run python Backend/app.py`)*
+
+The Flask backend runs on `http://127.0.0.1:5001`. It connects to PostgreSQL via `DATABASE_URL=postgresql://weatherway:weatherway@localhost:5433/weatherway` (configured in `Backend/.env`).
+
+> **Note**: If not using `uv`, you can also use a standard virtual environment:
+> ```bash
+> python -m venv .venv
+> source .venv/bin/activate  # Or on Windows: .\.venv\Scripts\Activate.ps1
+> pip install -e .
+> python Backend/app.py
+> ```
+
+### 3. Run the Frontend (Vite)
+
+In a separate terminal:
+
+```bash
 cd Frontend
-npm ci
+npm install
 npm run dev
 ```
 
-Open the Vite URL, normally http://localhost:5173. Vite proxies `/api` to Flask on port 5001. The planner does not need a PostgreSQL database or a login.
+Open **`http://localhost:5173`** in your browser. Vite proxies `/api` requests to Flask on port 5001.
 
-If your Python installation cannot bootstrap pip into a virtual environment, use `python -m pip --python .venv install -r Backend/requirements.txt` after creating the environment. This was the installation path used during development on this Windows machine.
+---
+
+## Authentication & Demo Account
+
+The trip planner connects directly to the authentication portal:
+
+- Click **Sign in ↗** in the floating capsule navbar to open the login portal.
+- Use the 1-click **Auto-fill** button to load the seeded demo credentials:
+  - **Email**: `alex@weatherway.app`
+  - **Password**: `neighborhood`
+- Or create a new account via the **Create Account** tab.
+- Once signed in, your user badge (`AR Alex`) appears in the capsule navbar with quick sign-out and profile viewing.
+
+---
 
 ## What works
 
-- Ohio city presets, earliest/latest departures, and optional alternative routes.
-- Checkpoints at the origin, every 15 minutes of cumulative road travel time, and the destination.
-- Map segments colored by forecast rain, visibility, projected crosswind gust, and possible freezing conditions.
-- Five-minute departure candidates, a departure slider, checkpoint inspection, and a recommended departure window.
-- ETA sensitivity evaluated at ±15 minutes, explicit unknown coverage, and forecast provenance.
-- Clear separation between simulated and live analysis. Live failures never silently substitute simulated conditions.
-- Existing account UI remains accessible through the Account button.
+- **Ohio Corridor Presets**: Columbus ↔ Cleveland, Cincinnati, Dayton, Toledo, Akron, and Mansfield.
+- **Dynamic Checkpoints**: 15-minute cumulative driving intervals paired with arrival-matched weather.
+- **Exposure Scrubbing**: 5-minute departure candidate steps, real-time exposure recalculation, and recommended departure window callout.
+- **Grounded Exposure Heuristics**: Rain intensity, crosswind component projection, visibility reduction, and near-freezing moisture flags.
+- **Docker Compose Database**: PostgreSQL container with persistent volume and auto-initialized tables.
+- **Design Variations Gallery**: Interactive showcase of 8 design directions in `design-variations/index.html`.
 
-## Data modes
+---
 
-**Simulated scenario** starts automatically. Its authored Columbus–Cleveland corridors and moving rain band require no external weather/routing services. Geometry is illustrative and weather is synthetic, not recorded or observed. Basemap tiles and web fonts still need internet access; route overlays remain available if tiles fail.
+## Data Modes
 
-**Live forecast** uses public OSRM demo routing by default (no live traffic), plus Open-Meteo's HRRR model (`gfs_hrrr`) with 15-minute returned weather series. Select another Ohio city pair or retain Columbus–Cleveland, then click **Find my weather window**. Public providers have usage limits and no demo availability guarantee; use a hosted/self-managed routing service for production.
+- **Simulated scenario**: Starts automatically. Its authored Columbus–Cleveland corridors and moving rain band require no external weather/routing services. Route overlays remain fully interactive offline.
+- **Live forecast**: Uses public OSRM demo routing by default (no live traffic), plus Open-Meteo's HRRR model (`gfs_hrrr`) with 15-minute weather series.
+- **Optional Mapbox routing**: Create `Backend/.env` based on `Backend/.env.example` and set `MAPBOX_ACCESS_TOKEN` for traffic-aware baseline routing.
 
-To use Mapbox traffic-aware baseline routing, create `Backend/.env` using `.env.example` and set `MAPBOX_ACCESS_TOKEN`. Restart Flask after changing environment settings. No token is sent to the browser. Route geometry and travel times are fixed at the earliest departure for the comparison; weather-dependent speed prediction is not implemented.
+---
 
-Live inputs are restricted to the Ohio region, a two-hour departure window, routes up to four hours, and departures within the next 12 hours. Returned forecast coverage is checked point by point. Some variables at a 15-minute returned cadence may be derived or interpolated; the UI does not claim exact-minute forecast accuracy.
+## Verification & Tests
 
-## API
+Run all unit tests and verify the production build:
 
-- `GET /api/health`: planner readiness without querying optional account storage.
-- `GET /api/trips/config`: city presets, limits, routing provider, and simulation description.
-- `POST /api/trips/analyze`: origin/destination objects containing `name` and `[longitude, latitude]` coordinates, `departureStart`/`departureEnd` timestamps with offsets, `timeZone`, `includeAlternatives`, and `dataMode` (`demo` or `live`). Returns routes, checkpoints, all departure candidates, source metadata, and recommendation.
+```bash
+# Backend unit tests (27 tests)
+uv run python -m unittest discover -s Backend/tests -v
 
-Provider caches are bounded, in-memory, and process-local: five minutes for routing, ten minutes for forecast snapshots. A batch weather request covers the checkpoint locations across the whole comparison window. Scrubbing uses precomputed candidates with no provider calls.
-
-## Optional account database
-
-Set `DATABASE_URL` in `Backend/.env`, then initialize the existing account schema explicitly:
-
-```powershell
-.\.venv\Scripts\python.exe Backend/app.py --init-db
-```
-
-Then start the backend normally. Authentication endpoints still use Postgres, but importing or starting the planner no longer connects to it. Existing demo account credentials are preserved in the sign-in screen.
-
-## Verify
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s Backend/tests -v
+# Frontend unit tests & production bundle
 cd Frontend
 npm test
 npm run build
 ```
 
-Tests cover travel-time sampling, forecast accumulation boundaries, no extrapolation, missing/invalid data, rain units, crosswind projection, possible freezing flags, ranking, request validation, cache behavior, provider failure behavior, and Eastern daylight-saving transitions.
+---
 
-## Limits and next steps
+## Design System
 
-Exposure labels use **uncalibrated demonstration heuristics**. They are not probabilities of hydroplaning, icing, or collision, and lower exposure is not a guarantee of safe driving. Fifteen-minute samples can miss brief or localized hazards. Details and thresholds are visible under **How the comparison works**.
+WeatherWay uses the **Terracotta Immersive Editorial** design language:
+- **Design Specifications & Tokens**: Detailed in [`docs/design.md`](docs/design.md).
+- **Interactive Variations Gallery**: Open [`design-variations/index.html`](design-variations/index.html) in your browser (`python3 -m http.server -d design-variations 8080`) to inspect all 8 design directions and color palettes.
 
-Next integrations: OHGO timestamped pavement observations, official alert overlays, a genuine captured provider scenario for replay, and a grounded AI explanation. Radar imagery, camera classification, calibrated pavement-freezing models, arbitrary-address geocoding, and predicted weather slowdowns are not implemented.
-
-The broader product scope, proposed contracts, and implementation gates are in [docs/roadtrip-mvp.md](docs/roadtrip-mvp.md).
-
-Provider references: [Open-Meteo HRRR](https://open-meteo.com/en/docs/gfs-api), [OSRM](https://project-osrm.org/docs/v5.24.0/api/), [Mapbox Directions](https://docs.mapbox.com/api/navigation/directions/), [Leaflet](https://leafletjs.com/reference.html), [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).
+The broader product scope and architecture document is recorded in [`docs/roadtrip-mvp.md`](docs/roadtrip-mvp.md).

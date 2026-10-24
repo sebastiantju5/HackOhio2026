@@ -19,9 +19,13 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 app.register_blueprint(trips)
 CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql:///locallens")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://weatherway:weatherway@localhost:5433/weatherway"
+)
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-DEMO_EMAIL = "alex@locallens.app"
+DEMO_EMAIL = "alex@weatherway.app"
+LEGACY_DEMO_EMAIL = "alex@locallens.app"
 DEMO_PASSWORD = "neighborhood"
 
 
@@ -38,18 +42,29 @@ def init_db():
     with connect() as conn:
         for statement in statements:
             conn.execute(statement)
-        existing = conn.execute(
-            "SELECT id FROM accounts WHERE email = %s",
-            (DEMO_EMAIL,),
-        ).fetchone()
-        if existing is None:
-            conn.execute(
-                """
-                INSERT INTO accounts (name, email, password_hash)
-                VALUES (%s, %s, %s)
-                """,
-                ("Alex Rivera", DEMO_EMAIL, generate_password_hash(DEMO_PASSWORD)),
-            )
+        for email in (DEMO_EMAIL, LEGACY_DEMO_EMAIL):
+            existing = conn.execute(
+                "SELECT id FROM accounts WHERE email = %s",
+                (email,),
+            ).fetchone()
+            if existing is None:
+                conn.execute(
+                    """
+                    INSERT INTO accounts (name, email, password_hash)
+                    VALUES (%s, %s, %s)
+                    """,
+                    ("Alex Rivera", email, generate_password_hash(DEMO_PASSWORD)),
+                )
+
+
+def ensure_db_ready():
+    """Ensure database schema and seed accounts exist if postgres is running."""
+    try:
+        init_db()
+    except Exception:
+        # DB might not be up yet; endpoints handle connection errors gracefully
+        pass
+
 
 
 def public_user(user):
@@ -87,7 +102,18 @@ def home():
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "planner": "available", "database": "optional; used by account endpoints only"})
+    db_status = "unavailable"
+    try:
+        with connect() as conn:
+            conn.execute("SELECT 1")
+            db_status = "connected"
+    except Exception:
+        db_status = "unavailable; ensure postgres docker is running"
+    return jsonify({
+        "status": "ok",
+        "planner": "available",
+        "database": db_status
+    })
 
 
 @app.post("/api/auth/login")
@@ -183,6 +209,9 @@ def logout():
         except psycopg.Error:
             return jsonify({"error": "Account storage is unavailable."}), 503
     return jsonify({"ok": True})
+
+
+ensure_db_ready()
 
 
 if __name__ == "__main__":

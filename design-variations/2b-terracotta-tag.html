@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 2B: Terracotta Dispatch &amp; Pinned Tag — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --terracotta: #6e2718;
+      --terracotta-deep: #541d11;
+      --terracotta-light: #833120;
+      --paper: #f6f2e9;
+      --paper-card: #fdfbf7;
+      --paper-dark: #ebe3d3;
+      --ink: #1e1e20;
+      --ink-dim: #5c554e;
+      --spruce: #1d5b43;
+      --amber: #d97706;
+      --tag-blue: #93c5fd;
+      --tag-blue-dark: #1e3a8a;
+      --border: #dfd7c5;
+      --glass-overlay: rgba(255, 255, 255, 0.75);
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--terracotta);
+      color: #ffffff;
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Top Preview Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(84, 29, 17, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: rgba(255,255,255,0.15);
+      color: #fed7aa;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .preview-tabs {
+      display: flex;
+      background: rgba(0,0,0,0.25);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: #fdba74;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: #ffffff;
+      color: var(--terracotta);
+      font-weight: 700;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: #fed7aa;
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-actions a:hover { color: #fff; }
+
+    /* Page View Containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Terracotta Header (Inspired by Image 2 Squarespace) */
+    .terracotta-header {
+      padding: 32px 40px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    .brand-logo-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 24px;
+    }
+    .squarespace-style-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      display: grid;
+      place-content: center;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 19px;
+      font-weight: 600;
+    }
+    .brand-logo-mark span {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Dramatic Editorial Headline with Pinned Tag */
+    .headline-stage {
+      position: relative;
+      max-width: 820px;
+      margin: 0 auto 30px;
+      padding: 0 20px;
+    }
+    .editorial-h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(38px, 5.2vw, 64px);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+    .editorial-h1 em {
+      font-style: italic;
+      color: #fed7aa;
+    }
+
+    /* Tactile Pinned Tag (Inspired by Image 2's Black Friday Tag) */
+    .pinned-departure-tag {
+      position: absolute;
+      right: -25px;
+      top: 15px;
+      background: var(--tag-blue);
+      color: var(--tag-blue-dark);
+      padding: 10px 18px 10px 24px;
+      border-radius: 4px 12px 12px 4px;
+      transform: rotate(8deg);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+      font-family: var(--font-sans);
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .pinned-departure-tag:hover {
+      transform: rotate(4deg) scale(1.05);
+    }
+    /* Pin grommet hole & string */
+    .pinned-departure-tag::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--terracotta);
+      border: 1.5px solid rgba(0,0,0,0.3);
+    }
+
+    .cta-underline-link {
+      color: #ffffff;
+      font-size: 18px;
+      font-family: var(--font-serif);
+      text-decoration: underline;
+      text-underline-offset: 6px;
+      text-decoration-thickness: 1.5px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .cta-underline-link:hover { opacity: 0.85; }
+
+    /* The Main Folio Card in Warm Bone Linen (Inspired by Image 2's Product Card) */
+    .editorial-stage-container {
+      max-width: 980px;
+      margin: 40px auto 60px;
+      padding: 0 20px;
+    }
+    .bone-folio-card {
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);
+      position: relative;
+    }
+
+    /* Card Top Nav Bar */
+    .folio-topbar {
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+    }
+
+    /* Floating Frosted Swatches Widget (Directly inspired by Image 2) */
+    .floating-swatch-widget {
+      position: absolute;
+      top: 90px;
+      left: 28px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 6px;
+      border-radius: 10px;
+      display: flex;
+      gap: 6px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .swatch-bar {
+      width: 22px;
+      height: 40px;
+      border-radius: 4px;
+    }
+
+    /* Floating Frosted Action Menu (Directly inspired by Image 2's "Edit with AI" menu) */
+    .floating-frosted-menu {
+      position: absolute;
+      top: 240px;
+      right: 32px;
+      z-index: 10;
+      background: rgba(60, 40, 35, 0.78);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.3);
+      width: 170px;
+    }
+    .frosted-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .frosted-menu-item:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .frosted-ai-badge {
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      padding: 2px 4px;
+      font-size: 9px;
+      font-weight: 700;
+      margin-left: auto;
+    }
+
+    /* Map Showcase Viewport */
+    .folio-map-viewport {
+      background: #eae3d3;
+      padding: 40px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 380px;
+    }
+    .folio-map-svg {
+      width: 100%;
+      max-width: 600px;
+      height: 320px;
+    }
+
+    /* Lower Folio Details (Product / Corridor Specs) */
+    .folio-bottom-details {
+      padding: 34px 40px;
+      background: var(--paper-card);
+      border-top: 1px solid var(--border);
+    }
+    .corridor-meta-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 20px;
+    }
+    .corridor-spec-title {
+      font-family: var(--font-serif);
+      font-size: 32px;
+      font-weight: 400;
+      color: var(--ink);
+    }
+    .corridor-spec-price {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--terracotta);
+    }
+
+    /* Tactical Controls Row */
+    .folio-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+    }
+    .window-stepper {
+      display: flex;
+      align-items: center;
+      background: var(--paper-dark);
+      border-radius: 9999px;
+      padding: 4px 12px;
+      gap: 14px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .stepper-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .add-to-cart-btn {
+      background: #8b7d6b;
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 12px 28px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .add-to-cart-btn:hover {
+      background: #6e6252;
+    }
+
+    /* Scrubber Row inside Bone Folio */
+    .terracotta-scrubber-deck {
+      margin-top: 28px;
+      background: var(--paper-dark);
+      border-radius: 16px;
+      padding: 20px 24px;
+    }
+    .scrubber-timeline-pills {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      overflow-x: auto;
+    }
+    .timeline-pill {
+      flex: 1;
+      min-width: 90px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .timeline-pill.chosen, .timeline-pill:hover {
+      border-color: var(--terracotta);
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(110, 39, 24, 0.15);
+    }
+
+    /* VIEW 2: AUTH / SIGN IN (Terracotta Byway) */
+    .login-stage-terracotta {
+      min-height: calc(100vh - 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .terracotta-login-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--paper);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+      position: relative;
+    }
+    .login-card-inner {
+      padding: 40px 36px;
+      color: var(--ink);
+    }
+    .pinned-login-tag {
+      position: absolute;
+      top: 24px;
+      right: -10px;
+      background: var(--tag-blue);
+      color: var(--tag-blue-dark);
+      padding: 6px 14px 6px 20px;
+      border-radius: 4px 10px 10px 4px;
+      font-weight: 800;
+      font-size: 11px;
+      transform: rotate(6deg);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .pinned-login-tag::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--terracotta);
+    }
+    .terracotta-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .terracotta-input-group label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--ink-dim);
+    }
+    .terracotta-input-group input {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      background: #ffffff;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .terracotta-input-group input:focus {
+      border-color: var(--terracotta);
+      box-shadow: 0 0 0 3px rgba(110, 39, 24, 0.15);
+    }
+    .btn-terracotta-submit {
+      background: var(--terracotta);
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 13px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn-terracotta-submit:hover {
+      background: var(--terracotta-deep);
+    }
+
+    /* Palette Drawer */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      width: 280px;
+      color: var(--ink);
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); }
+
+    @media (max-width: 900px) {
+      .floating-frosted-menu { display: none; }
+      .floating-swatch-widget { display: none; }
+      .scrubber-timeline-pills { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 2B</span>
+      <strong>Terracotta Dispatch &amp; Pinned Tag</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Corridor Folio View
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sign In &amp; Account View
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid rgba(255,255,255,0.2)">🎨 Swatches</button>
+      <a href="index.html">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- VIEW 1: CORRIDOR FOLIO VIEW (Terracotta & Pinned Tag) -->
+  <div id="view-planner" class="view-container active">
+    <!-- Header -->
+    <header class="terracotta-header">
+      <a href="#" class="brand-logo-mark">
+        <div class="squarespace-style-icon">w</div>
+        <span>WeatherWay Dispatch</span>
+      </a>
+
+      <!-- Headline Stage with Diagonal Pinned Tag (Inspired by Image 2) -->
+      <div class="headline-stage">
+        <h1 class="editorial-h1">
+          Your clearest Ohio drive starts with <em>better timing.</em>
+        </h1>
+        <div class="pinned-departure-tag" onclick="alert('Pinned optimal departure: 3:15 PM ET reduces rain by 36 minutes!')">
+          <span>RECOMMENDED<br>3:15 PM ET DEPARTURE</span>
+        </div>
+      </div>
+
+      <a class="cta-underline-link" onclick="switchView('login')">
+        Access Saved Corridors Today
+      </a>
+    </header>
+
+    <!-- Main Bone Folio Card (Inspired by Image 2's Product Showcase Card) -->
+    <main class="editorial-stage-container">
+      <div class="bone-folio-card">
+        <!-- Folio Topbar -->
+        <div class="folio-topbar">
+          <div style="display: flex; gap: 14px; align-items: center;">
+            <span style="cursor: pointer;">☰ CORRIDORS</span>
+            <span>OHIO I-71 NORTH</span>
+          </div>
+          <div>DISPATCH #402</div>
+        </div>
+
+        <!-- Floating Frosted Swatches Widget (Directly inspired by Image 2) -->
+        <div class="floating-swatch-widget">
+          <div class="swatch-bar" style="background: #ffffff;" title="Clear (0 min)"></div>
+          <div class="swatch-bar" style="background: #d4c8b8;" title="Overcast"></div>
+          <div class="swatch-bar" style="background: #78736a;" title="Wind Vector"></div>
+          <div class="swatch-bar" style="background: #93c5fd;" title="Light Rain"></div>
+          <div class="swatch-bar" style="background: #363430;" title="Severe Storm"></div>
+        </div>
+
+        <!-- Floating Frosted Action Menu (Directly inspired by Image 2) -->
+        <div class="floating-frosted-menu">
+          <div class="frosted-menu-item" onclick="alert('AI trip reasoning: Waiting 45 mins saves 36 mins storm exposure')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span>Explain with AI</span>
+            <span class="frosted-ai-badge">AI</span>
+          </div>
+          <div class="frosted-menu-item" onclick="alert('Viewing point HRRR radar sequence')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Radar imagery</span>
+          </div>
+          <div class="frosted-menu-item" onclick="alert('Resampling 15-minute corridor points')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Resample Route</span>
+            <span class="frosted-ai-badge">AI</span>
+          </div>
+        </div>
+
+        <!-- Map Viewport -->
+        <div class="folio-map-viewport">
+          <svg class="folio-map-svg" viewBox="0 0 580 300" fill="none">
+            <!-- Road corridor path -->
+            <path d="M 80 250 L 170 205 L 270 155 L 390 105 L 500 45" stroke="#1d5b43" stroke-width="5" stroke-linecap="round"/>
+            <path d="M 80 250 L 170 205 L 270 155 L 390 105 L 500 45" stroke="#93c5fd" stroke-width="14" stroke-opacity="0.35" stroke-linecap="round"/>
+
+            <!-- Markers -->
+            <circle cx="80" cy="250" r="7" fill="#fdfbf7" stroke="#1d5b43" stroke-width="3"/>
+            <text x="95" y="255" fill="#1e1e20" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Columbus Origin</text>
+
+            <circle cx="170" cy="205" r="5" fill="#1d5b43"/>
+            <!-- Mansfield Selected -->
+            <circle cx="270" cy="155" r="9" fill="#fdfbf7" stroke="#d97706" stroke-width="3"/>
+            <circle cx="270" cy="155" r="4" fill="#d97706"/>
+            <text x="285" y="150" fill="#d97706" font-family="'Plus Jakarta Sans'" font-size="11" font-weight="700">Mansfield CP (Mile 68)</text>
+
+            <circle cx="390" cy="105" r="5" fill="#1d5b43"/>
+            <circle cx="500" cy="45" r="7" fill="#fdfbf7" stroke="#1d5b43" stroke-width="3"/>
+            <text x="430" y="38" fill="#1e1e20" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Cleveland</text>
+          </svg>
+        </div>
+
+        <!-- Bottom Details (Editorial Spec) -->
+        <div class="folio-bottom-details">
+          <div class="corridor-meta-line">
+            <div>
+              <h2 class="corridor-spec-title">Columbus → Cleveland Corridor</h2>
+              <p style="font-size: 13px; color: var(--ink-dim); margin-top: 4px;">
+                143.2 miles via Interstate 71 · Baseline travel time: 2 hours 14 minutes
+              </p>
+            </div>
+            <div class="corridor-spec-price">
+              6 min storm exposure
+            </div>
+          </div>
+
+          <!-- Controls Row (Stepper + CTA Button like Image 2) -->
+          <div class="folio-controls-row">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--ink-dim);">Departure</span>
+              <div class="window-stepper">
+                <button class="stepper-btn" onclick="alert('Adjusted 15 min earlier')">−</button>
+                <span>3:15 PM ET</span>
+                <button class="stepper-btn" onclick="alert('Adjusted 15 min later')">+</button>
+              </div>
+            </div>
+
+            <button class="add-to-cart-btn" onclick="alert('Departure window 3:15 PM locked into route profile')">
+              Lock Departure Window
+            </button>
+          </div>
+
+          <!-- Scrubber Deck inside Bone Card -->
+          <div class="terracotta-scrubber-deck">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; text-transform: uppercase;">
+              <span>5-Minute Departure Windows</span>
+              <span style="color: var(--spruce);">Recommended: 3:15 PM</span>
+            </div>
+
+            <div class="scrubber-timeline-pills">
+              <div class="timeline-pill">
+                <div style="font-weight: 700; font-size: 12px;">2:30 PM</div>
+                <div style="font-size: 10px; color: #b91c1c; font-family: var(--font-mono);">42m rain</div>
+              </div>
+              <div class="timeline-pill">
+                <div style="font-weight: 700; font-size: 12px;">2:45 PM</div>
+                <div style="font-size: 10px; color: #b91c1c; font-family: var(--font-mono);">36m rain</div>
+              </div>
+              <div class="timeline-pill">
+                <div style="font-weight: 700; font-size: 12px;">3:00 PM</div>
+                <div style="font-size: 10px; color: var(--amber); font-family: var(--font-mono);">21m rain</div>
+              </div>
+              <div class="timeline-pill chosen">
+                <div style="font-weight: 700; font-size: 12px; color: var(--terracotta);">3:15 PM ★</div>
+                <div style="font-size: 10px; color: var(--spruce); font-family: var(--font-mono);">6m clear</div>
+              </div>
+              <div class="timeline-pill">
+                <div style="font-weight: 700; font-size: 12px;">3:30 PM</div>
+                <div style="font-size: 10px; color: var(--spruce); font-family: var(--font-mono);">8m clear</div>
+              </div>
+              <div class="timeline-pill">
+                <div style="font-weight: 700; font-size: 12px;">3:45 PM</div>
+                <div style="font-size: 10px; color: var(--amber); font-family: var(--font-mono);">16m rain</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- VIEW 2: AUTH / LOGIN VIEW (Terracotta Editorial) -->
+  <div id="view-login" class="view-container">
+    <div class="login-stage-terracotta">
+      <div class="terracotta-login-card">
+        <div class="pinned-login-tag">CORRIDOR ACCESS</div>
+        <div class="login-card-inner">
+          <div style="margin-bottom: 24px;">
+            <div class="squarespace-style-icon" style="color: var(--terracotta); border-color: var(--terracotta); margin-bottom: 12px;">w</div>
+            <h2 style="font-family: var(--font-serif); font-size: 30px; font-weight: 400; color: var(--ink);">Sign In to Dispatch</h2>
+            <p style="font-size: 13px; color: var(--ink-dim); margin-top: 4px;">Sync preferred Ohio highway routes and exposure telemetry</p>
+          </div>
+
+          <div style="display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px;">
+            <button id="terra-btn-in" style="flex: 1; padding: 10px; border: none; background: none; font-weight: 700; font-size: 13px; color: var(--terracotta); border-bottom: 2px solid var(--terracotta); cursor: pointer;" onclick="setTerracottaMode('signin')">Sign In</button>
+            <button id="terra-btn-up" style="flex: 1; padding: 10px; border: none; background: none; font-weight: 500; font-size: 13px; color: var(--ink-dim); cursor: pointer;" onclick="setTerracottaMode('signup')">Create Account</button>
+          </div>
+
+          <!-- Demo Fill -->
+          <div style="background: var(--paper-dark); padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+            <span>Alex Rivera (Dispatch demo)</span>
+            <button type="button" onclick="fillTerracottaDemo()" style="background: #fff; border: 1px solid var(--border); padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; cursor: pointer;">Fill</button>
+          </div>
+
+          <form onsubmit="handleTerracottaAuth(event)">
+            <div id="terra-name-wrap" class="terracotta-input-group" style="display: none;">
+              <label>Operator Name</label>
+              <input type="text" id="terra-name-inp" placeholder="Alex Rivera">
+            </div>
+
+            <div class="terracotta-input-group">
+              <label>Email Address</label>
+              <input type="email" id="terra-email-inp" required placeholder="alex@weatherway.app">
+            </div>
+
+            <div class="terracotta-input-group">
+              <label>Password</label>
+              <input type="password" id="terra-pass-inp" required placeholder="••••••••••••">
+            </div>
+
+            <button type="submit" class="btn-terracotta-submit">
+              <span id="terra-submit-text">Sign In to WeatherWay</span>
+            </button>
+          </form>
+
+          <div style="margin-top: 22px; text-align: center;">
+            <button type="button" onclick="switchView('planner')" style="background: none; border: none; color: var(--ink-dim); font-size: 13px; cursor: pointer; text-decoration: underline;">
+              ← Return to Corridor Folio
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px;">Terracotta Palette Tokens</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; color: var(--ink-dim); cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Deep terracotta rust, warm bone linen, tag blue, and spruce.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #6e2718;" title="#6e2718 Terracotta"></div>
+      <div class="swatch-box" style="background: #f6f2e9;" title="#f6f2e9 Bone Paper"></div>
+      <div class="swatch-box" style="background: #93c5fd;" title="#93c5fd Tag Blue"></div>
+      <div class="swatch-box" style="background: #8b7d6b;" title="#8b7d6b Taupe Button"></div>
+      <div class="swatch-box" style="background: #1d5b43;" title="#1d5b43 Spruce"></div>
+      <div class="swatch-box" style="background: #d97706;" title="#d97706 Warning"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setTerracottaMode(mode) {
+      document.getElementById('terra-btn-in').style.borderBottom = mode === 'signin' ? '2px solid var(--terracotta)' : 'none';
+      document.getElementById('terra-btn-in').style.color = mode === 'signin' ? 'var(--terracotta)' : 'var(--ink-dim)';
+      document.getElementById('terra-btn-up').style.borderBottom = mode === 'signup' ? '2px solid var(--terracotta)' : 'none';
+      document.getElementById('terra-btn-up').style.color = mode === 'signup' ? 'var(--terracotta)' : 'var(--ink-dim)';
+      document.getElementById('terra-name-wrap').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('terra-submit-text').innerText = mode === 'signup' ? 'Create Dispatch Profile' : 'Sign In to WeatherWay';
+    }
+
+    function fillTerracottaDemo() {
+      setTerracottaMode('signin');
+      document.getElementById('terra-email-inp').value = 'alex@weatherway.app';
+      document.getElementById('terra-pass-inp').value = 'neighborhood';
+    }
+
+    function handleTerracottaAuth(e) {
+      e.preventDefault();
+      alert('Welcome back, Alex Rivera! Signed into WeatherWay Terracotta Dispatch.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Variation 2B Split: Nordic Sienna Studio — WeatherWay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sienna: #782e20;
+      --sienna-deep: #591e13;
+      --sienna-soft: #fbf1ed;
+      --canvas: #f6f3eb;
+      --paper: #ffffff;
+      --border: #dfd7c8;
+      --ink: #1a1a1d;
+      --ink-dim: #575551;
+      --spruce: #1d5b43;
+      --amber: #c87508;
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Top Preview Bar */
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(246, 243, 235, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .preview-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-pill {
+      background: var(--sienna-soft);
+      color: var(--sienna);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(120, 46, 32, 0.2);
+    }
+    .preview-tabs {
+      display: flex;
+      background: #e7e0d2;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: none;
+      color: var(--ink-dim);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-tab.active {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-actions a {
+      color: var(--ink-dim);
+      text-decoration: none;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-actions a:hover { color: var(--sienna); }
+
+    /* View Containers */
+    .view-container { display: none; }
+    .view-container.active { display: block; }
+
+    /* Studio Header */
+    .sienna-header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sienna-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .sienna-seal {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--sienna);
+      color: #fff;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 18px;
+      display: grid;
+      place-content: center;
+    }
+    .brand-text h1 {
+      font-family: var(--font-serif);
+      font-size: 21px;
+      font-weight: 500;
+      line-height: 1.1;
+    }
+    .brand-text p {
+      font-size: 11px;
+      color: var(--ink-dim);
+      letter-spacing: 0.3px;
+    }
+    .user-pill-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .user-pill-tag:hover {
+      background: #fff;
+      border-color: var(--sienna);
+    }
+
+    /* Main Studio Split Layout (Like 2A's beloved structural balance) */
+    .sienna-layout {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: calc(100vh - 120px);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: var(--paper);
+    }
+
+    /* Left Sidebar */
+    .sienna-sidebar {
+      background: var(--canvas);
+      border-right: 1px solid var(--border);
+      padding: 32px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .sidebar-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--sienna);
+      font-weight: 600;
+    }
+    .sidebar-heading {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      font-weight: 400;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+    .sidebar-heading em {
+      font-style: italic;
+      color: var(--sienna);
+    }
+    .sidebar-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .clean-input-box {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .clean-input-box label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .clean-input-box select, .clean-input-box input {
+      border: none;
+      outline: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      background: transparent;
+    }
+    .btn-sienna {
+      background: var(--sienna);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s;
+    }
+    .btn-sienna:hover { background: var(--sienna-deep); }
+
+    /* Right Main Workspace */
+    .sienna-workspace {
+      padding: 32px 38px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .workspace-topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .workspace-topline h2 {
+      font-family: var(--font-serif);
+      font-size: 30px;
+      font-weight: 400;
+      color: var(--ink);
+    }
+
+    /* Map & Checkpoint Split */
+    .corridor-display-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      min-height: 400px;
+      background: #faf8f4;
+    }
+    .map-pane {
+      background: #efe9dc;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .map-svg {
+      width: 100%;
+      max-width: 540px;
+      height: 310px;
+    }
+    .checkpoint-pane {
+      background: #ffffff;
+      border-left: 1px solid var(--border);
+      padding: 26px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .pane-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--sienna);
+      background: var(--sienna-soft);
+      padding: 3px 8px;
+      border-radius: 4px;
+      width: fit-content;
+      font-weight: 600;
+    }
+    .pane-title {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+    }
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .specs-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+    .specs-table td {
+      padding: 8px 0;
+      color: var(--ink-dim);
+    }
+    .specs-table td:last-child {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    /* Scrubber */
+    .scrubber-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 26px;
+      background: #ffffff;
+    }
+    .scrubber-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .scrubber-step {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      background: #faf8f4;
+      transition: all 0.2s;
+    }
+    .scrubber-step:hover, .scrubber-step.chosen {
+      border-color: var(--sienna);
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(120, 46, 32, 0.1);
+    }
+    .step-time { font-size: 12px; font-weight: 700; }
+    .step-exp { font-size: 11px; font-family: var(--font-mono); margin-top: 3px; }
+
+    /* Recommendation Banner */
+    .recommendation-banner {
+      background: var(--sienna-soft);
+      border: 1px solid rgba(120, 46, 32, 0.3);
+      border-radius: 12px;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .rec-text h4 {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      color: var(--sienna-deep);
+      font-weight: 600;
+    }
+    .rec-text p {
+      font-size: 13px;
+      color: #3b160f;
+    }
+
+    /* VIEW 2: AUTH / LOGIN VIEW */
+    .login-stage {
+      min-height: calc(100vh - 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+    }
+    .login-tabs {
+      display: flex;
+      border-bottom: 2px solid #efe9dc;
+      margin-bottom: 20px;
+    }
+    .login-tab-btn {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      background: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+    }
+    .login-tab-btn.active {
+      color: var(--sienna);
+      border-bottom-color: var(--sienna);
+    }
+
+    /* Palette Drawer */
+    .palette-drawer {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 280px;
+    }
+    .palette-drawer.open { display: block; }
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; }
+    .swatch-box { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); }
+
+    @media (max-width: 900px) {
+      .sienna-layout { grid-template-columns: 1fr; border: none; }
+      .corridor-display-card { grid-template-columns: 1fr; }
+      .checkpoint-pane { border-left: none; border-top: 1px solid var(--border); }
+      .scrubber-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar -->
+  <header class="preview-bar">
+    <div class="preview-brand">
+      <span class="preview-pill">DIRECTION 2B · SPLIT STUDIO</span>
+      <strong>Nordic Sienna Studio</strong>
+    </div>
+
+    <div class="preview-tabs">
+      <button class="preview-tab active" onclick="switchView('planner')">
+        Corridor Planner View
+      </button>
+      <button class="preview-tab" onclick="switchView('login')">
+        Sign In &amp; Account View
+      </button>
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-tab" onclick="togglePalette()" style="border: 1px solid var(--border)">🎨 Swatches</button>
+      <a href="index.html">← Back to Overview</a>
+    </div>
+  </header>
+
+  <!-- VIEW 1: PLANNER -->
+  <div id="view-planner" class="view-container active">
+    <header class="sienna-header">
+      <a href="#" class="sienna-brand">
+        <div class="sienna-seal">w</div>
+        <div class="brand-text">
+          <h1>WeatherWay</h1>
+          <p>Sienna Studio Route Dispatch</p>
+        </div>
+      </a>
+
+      <div class="user-pill-tag" onclick="switchView('login')">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--sienna);"></span>
+        <span>Alex Rivera (Dispatch #402)</span>
+      </div>
+    </header>
+
+    <div class="sienna-layout">
+      <!-- Sidebar -->
+      <aside class="sienna-sidebar">
+        <div>
+          <span class="sidebar-eyebrow">Corridor Engine</span>
+          <h2 class="sidebar-heading">Good timing.<br><em>Better travels.</em></h2>
+        </div>
+
+        <form class="sidebar-form" onsubmit="event.preventDefault()">
+          <div class="clean-input-box">
+            <label>Starting Point</label>
+            <select>
+              <option>Columbus, OH (Broad &amp; High)</option>
+              <option>Cincinnati, OH</option>
+              <option>Dayton, OH</option>
+            </select>
+          </div>
+
+          <div class="clean-input-box">
+            <label>Heading To</label>
+            <select>
+              <option>Cleveland, OH (Public Square)</option>
+              <option>Akron, OH</option>
+              <option>Toledo, OH</option>
+            </select>
+          </div>
+
+          <div class="clean-input-box">
+            <label>Earliest Departure</label>
+            <input type="datetime-local" value="2026-10-24T14:30">
+          </div>
+
+          <div class="clean-input-box">
+            <label>Latest Departure</label>
+            <input type="datetime-local" value="2026-10-24T16:30">
+          </div>
+
+          <button class="btn-sienna">
+            <span>Find Weather Window</span>
+            <span>→</span>
+          </button>
+        </form>
+
+        <div style="font-size: 12px; color: var(--ink-dim); line-height: 1.5; border-top: 1px solid var(--border); padding-top: 14px;">
+          <strong>Forecast Provenance:</strong> High-resolution point forecasts derived from the NOAA HRRR 15-minute atmospheric cycle.
+        </div>
+      </aside>
+
+      <!-- Main Workspace -->
+      <main class="sienna-workspace">
+        <div class="workspace-topline">
+          <div>
+            <h2>Columbus → Cleveland</h2>
+            <p style="font-size: 13px; color: var(--ink-dim);">Interstate 71 North · 143.2 miles · Travel time: 2h 14m</p>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--sienna); font-weight: 600;">
+            RECOMMENDED: 3:15 PM ET
+          </span>
+        </div>
+
+        <!-- Corridor Display Card -->
+        <div class="corridor-display-card">
+          <div class="map-pane">
+            <svg class="map-svg" viewBox="0 0 540 300" fill="none">
+              <!-- Route Path -->
+              <path d="M 80 250 L 170 210 L 270 160 L 380 110 L 480 50" stroke="#1d5b43" stroke-width="4.5" stroke-linecap="round"/>
+              <path d="M 80 250 L 170 210 L 270 160 L 380 110 L 480 50" stroke="#782e20" stroke-width="12" stroke-opacity="0.12" stroke-linecap="round"/>
+
+              <!-- Markers -->
+              <circle cx="80" cy="250" r="7" fill="#ffffff" stroke="#1d5b43" stroke-width="3"/>
+              <text x="95" y="255" fill="#1a1a1d" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Columbus (Mile 0)</text>
+
+              <circle cx="170" cy="210" r="5" fill="#1d5b43"/>
+              <circle cx="270" cy="160" r="9" fill="#ffffff" stroke="#782e20" stroke-width="3"/>
+              <circle cx="270" cy="160" r="4" fill="#782e20"/>
+              <text x="285" y="155" fill="#782e20" font-family="'Plus Jakarta Sans'" font-size="11" font-weight="700">Mansfield CP (Selected)</text>
+
+              <circle cx="380" cy="110" r="5" fill="#1d5b43"/>
+              <circle cx="480" cy="50" r="7" fill="#ffffff" stroke="#1d5b43" stroke-width="3"/>
+              <text x="410" y="40" fill="#1a1a1d" font-family="'Plus Jakarta Sans'" font-size="12" font-weight="700">Cleveland</text>
+            </svg>
+          </div>
+
+          <!-- Checkpoint Details -->
+          <div class="checkpoint-pane">
+            <span class="pane-tag">WAYPOINT 04 OF 10</span>
+            <div>
+              <h3 class="pane-title">Mansfield Route Cut</h3>
+              <p style="font-size: 12px; color: var(--ink-dim); margin-top: 2px;">Mile 68.2 · Arrival: 4:02 PM ET</p>
+            </div>
+
+            <table class="specs-table">
+              <tr>
+                <td>Expected Weather</td>
+                <td style="color: var(--amber);">Light Rain (2.1 mm/h)</td>
+              </tr>
+              <tr>
+                <td>Crosswind Vector</td>
+                <td>24 km/h West</td>
+              </tr>
+              <tr>
+                <td>Road Visibility</td>
+                <td>4.8 km</td>
+              </tr>
+              <tr>
+                <td>Air Temperature</td>
+                <td>12°C (54°F)</td>
+              </tr>
+            </table>
+
+            <div style="font-size: 11px; color: var(--ink-dim); line-height: 1.5; border-top: 1px solid var(--border); padding-top: 12px;">
+              Crosswinds near Richland County overpasses decrease significantly after the 3:30 PM window.
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrubber -->
+        <div class="scrubber-card">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; text-transform: uppercase;">
+            <span>Candidate Departure Windows</span>
+            <span style="color: var(--spruce);">5-Minute Resolution</span>
+          </div>
+
+          <div class="scrubber-grid">
+            <div class="scrubber-step">
+              <div class="step-time">2:30 PM</div>
+              <div class="step-exp" style="color: #b91c1c;">42m rain</div>
+            </div>
+            <div class="scrubber-step">
+              <div class="step-time">2:45 PM</div>
+              <div class="step-exp" style="color: #b91c1c;">36m rain</div>
+            </div>
+            <div class="scrubber-step">
+              <div class="step-time">3:00 PM</div>
+              <div class="step-exp" style="color: var(--amber);">21m rain</div>
+            </div>
+            <div class="scrubber-step chosen">
+              <div class="step-time" style="color: var(--sienna);">3:15 PM ★</div>
+              <div class="step-exp" style="color: var(--spruce); font-weight: 600;">6m clear</div>
+            </div>
+            <div class="scrubber-step">
+              <div class="step-time">3:30 PM</div>
+              <div class="step-exp" style="color: var(--spruce);">8m clear</div>
+            </div>
+            <div class="scrubber-step">
+              <div class="step-time">3:45 PM</div>
+              <div class="step-exp" style="color: var(--amber);">16m rain</div>
+            </div>
+            <div class="scrubber-step">
+              <div class="step-time">4:00 PM</div>
+              <div class="step-exp" style="color: #b91c1c;">34m rain</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommendation Banner -->
+        <div class="recommendation-banner">
+          <div class="rec-text">
+            <h4>Recommended Departure: 3:15 PM ET</h4>
+            <p>Waiting 45 minutes saves 36 minutes of heavy precipitation and gusty crosswinds along the Mansfield corridor.</p>
+          </div>
+          <button class="btn-sienna" style="white-space: nowrap; padding: 10px 18px;" onclick="alert('3:15 PM departure selected!')">
+            Select Window
+          </button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VIEW 2: AUTH / SIGN IN -->
+  <div id="view-login" class="view-container">
+    <div class="login-stage">
+      <div class="login-card">
+        <div style="text-align: center; margin-bottom: 22px;">
+          <div class="sienna-seal" style="margin: 0 auto 12px; width: 36px; height: 36px; font-size: 20px;">w</div>
+          <h2 style="font-family: var(--font-serif); font-size: 26px; font-weight: 500;">WeatherWay Dispatch</h2>
+          <p style="font-size: 13px; color: var(--ink-dim); margin-top: 4px;">Sign in to sync your Ohio route corridors and weather alerts</p>
+        </div>
+
+        <div class="login-tabs">
+          <button id="sienna-tab-in" class="login-tab-btn active" onclick="setSiennaTab('signin')">Sign In</button>
+          <button id="sienna-tab-up" class="login-tab-btn" onclick="setSiennaTab('signup')">Create Account</button>
+        </div>
+
+        <div style="background: var(--canvas); border: 1px dashed var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span>Alex Rivera (Dispatch demo)</span>
+          <button type="button" onclick="fillSiennaDemo()" style="background: #fff; border: 1px solid var(--border); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--sienna); cursor: pointer;">Auto-fill</button>
+        </div>
+
+        <form onsubmit="handleSiennaAuth(event)">
+          <div id="sienna-name-field" class="clean-input-box" style="display: none; margin-bottom: 12px;">
+            <label>Dispatcher Name</label>
+            <input type="text" id="sienna-name" placeholder="Alex Rivera">
+          </div>
+
+          <div class="clean-input-box" style="margin-bottom: 12px;">
+            <label>Email Address</label>
+            <input type="email" id="sienna-email" required placeholder="alex@weatherway.app">
+          </div>
+
+          <div class="clean-input-box" style="margin-bottom: 18px;">
+            <label>Password</label>
+            <input type="password" id="sienna-pass" required placeholder="••••••••••••">
+          </div>
+
+          <button type="submit" class="btn-sienna" style="width: 100%; justify-content: center; padding: 12px;">
+            <span id="sienna-submit-lbl">Sign In to WeatherWay</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 22px; text-align: center;">
+          <button type="button" onclick="switchView('planner')" style="background: none; border: none; color: var(--ink-dim); font-size: 13px; cursor: pointer;">
+            ← Return to Studio Corridor Planner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette Swatches Drawer -->
+  <div id="palette-drawer" class="palette-drawer">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-size: 13px;">Sienna Palette Tokens</strong>
+      <button onclick="togglePalette()" style="background: none; border: none; color: var(--ink-dim); cursor: pointer;">✕</button>
+    </div>
+    <p style="font-size: 11px; color: var(--ink-dim); margin-top: 4px;">Sienna rust, warm bone linen, spruce green, and amber.</p>
+    <div class="swatch-row">
+      <div class="swatch-box" style="background: #782e20;" title="#782e20 Sienna"></div>
+      <div class="swatch-box" style="background: #f6f3eb;" title="#f6f3eb Bone Linen"></div>
+      <div class="swatch-box" style="background: #ffffff;" title="#ffffff Pure Paper"></div>
+      <div class="swatch-box" style="background: #1d5b43;" title="#1d5b43 Spruce"></div>
+      <div class="swatch-box" style="background: #c87508;" title="#c87508 Amber"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewName) {
+      document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs[0].classList.toggle('active', viewName === 'planner');
+      tabs[1].classList.toggle('active', viewName === 'login');
+    }
+
+    function setSiennaTab(mode) {
+      document.getElementById('sienna-tab-in').classList.toggle('active', mode === 'signin');
+      document.getElementById('sienna-tab-up').classList.toggle('active', mode === 'signup');
+      document.getElementById('sienna-name-field').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('sienna-submit-lbl').innerText = mode === 'signup' ? 'Register Studio Profile' : 'Sign In to WeatherWay';
+    }
+
+    function fillSiennaDemo() {
+      setSiennaTab('signin');
+      document.getElementById('sienna-email').value = 'alex@weatherway.app';
+      document.getElementById('sienna-pass').value = 'neighborhood';
+    }
+
+    function handleSiennaAuth(e) {
+      e.preventDefault();
+      alert('Signed in to Sienna Studio! Returning to planner.');
+      switchView('planner');
+    }
+
+    function togglePalette() {
+      document.getElementById('palette-drawer').classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

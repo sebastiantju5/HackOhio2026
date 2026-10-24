@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeatherWay Design Variations — 5 Design &amp; Color Directions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,500&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #111726;
+      --card-hover: #172033;
+      --border: #1f2b42;
+      --border-bright: #314468;
+      --cyan: #38bdf8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-body: 'Inter', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(ellipse at 80% 0%, rgba(56, 189, 248, 0.08), transparent 50%),
+        radial-gradient(ellipse at 20% 100%, rgba(16, 185, 129, 0.06), transparent 50%);
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 48px 32px;
+    }
+
+    /* Hero Header */
+    .hero-header {
+      margin-bottom: 48px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 36px;
+    }
+    .kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .kicker::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+    }
+    .hero-title {
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-desc {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 760px;
+      margin-top: 14px;
+    }
+
+    /* Grid of 5 Variations */
+    .variations-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 28px;
+      margin-bottom: 56px;
+    }
+    .variation-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .variation-card:hover {
+      background: var(--card-hover);
+      border-color: var(--border-bright);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .card-number {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--cyan);
+    }
+    .card-badge {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .card-concept {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Swatches preview */
+    .swatches-strip {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .swatch-pip {
+      flex: 1;
+      height: 28px;
+      border-radius: 4px;
+      position: relative;
+    }
+    .swatch-pip::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .feature-list {
+      list-style: none;
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 24px;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .feature-list li::before {
+      content: '✓';
+      color: var(--emerald);
+      font-weight: 700;
+    }
+
+    .card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn-preview {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--cyan);
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .btn-preview:hover {
+      background: var(--cyan);
+      color: #000;
+    }
+    .btn-embed {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-embed:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    /* Live Interactive Sandbox Drawer */
+    .sandbox-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-top: 24px;
+    }
+    .sandbox-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .sandbox-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sandbox-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sandbox-btn.active {
+      background: var(--cyan);
+      color: #000;
+      font-weight: 600;
+      border-color: var(--cyan);
+    }
+    .preview-frame-container {
+      width: 100%;
+      height: 720px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .preview-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Comparison Matrix Table */
+    .matrix-section {
+      margin-top: 56px;
+    }
+    .matrix-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .matrix-table th, .matrix-table td {
+      padding: 16px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .matrix-table th {
+      background: rgba(0,0,0,0.4);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .matrix-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Hero Header -->
+    <header class="hero-header">
+      <div class="kicker">WeatherWay Design System · Nordic Evolution &amp; Inspirations</div>
+      <h1 class="hero-title">Connecting the Corridor Planner with <span>Modern Authentication</span></h1>
+      <p class="hero-desc">
+        Explore the <strong>Design 2 (Nordic Cartography) Evolution Collection</strong> inspired by modern floating capsule navbars, scenic landscape art, and warm editorial terracotta with tactile pinned tags, alongside the original 5 design explorations.
+      </p>
+    </header>
+
+    <!-- NEW FEATURED SECTION: DESIGN 2 EVOLUTIONS -->
+    <div style="margin-bottom: 48px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <div>
+          <h2 style="font-size: 24px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;">
+            <span style="background: #f97316; color: #000; font-size: 11px; font-family: var(--font-mono); padding: 2px 8px; border-radius: 4px; font-weight: 700;">SIMPLIFIED EVOLUTIONS</span>
+            Design 2B Simplified &amp; Refined Series (Clean, Focused, Restrained)
+          </h2>
+          <p style="font-size: 14px; color: var(--text-muted); margin-top: 4px;">
+            Taking the rich, warm terracotta palette and editorial serif typography of 2B, but ruthlessly eliminating unnecessary floating widgets, swatches toolbars, and clutter for a serene, purpose-driven driving forecast.
+          </p>
+        </div>
+      </div>
+
+      <div class="variations-grid" style="margin-bottom: 32px;">
+        <!-- Card 2B Simplified Minimalist -->
+        <div class="variation-card" style="border: 2px solid #ea580c; background: linear-gradient(180deg, #1c1514 0%, #11141a 100%);">
+          <div>
+            <div class="card-top">
+              <span class="card-number" style="background: #ea580c; color: #fff; font-weight: 700;">TOP PICK: 2B MINIMAL</span>
+              <span class="card-badge" style="color: #fdba74;">PURE &amp; UNCLUTTERED</span>
+            </div>
+            <h2 class="card-title">Terracotta Minimalist</h2>
+            <p class="card-concept">
+              Floating capsule navbar of 2A fused with 2B's warm terracotta &amp; bone paper palette. Zero clutter: clean integrated search capsule, single quiet blue recommendation tag, and distraction-free departure scrubber.
+            </p>
+            <div class="swatches-strip">
+              <div class="swatch-pip" style="background: #732a1b;" title="#732a1b Terracotta"></div>
+              <div class="swatch-pip" style="background: #f8f5ee;" title="#f8f5ee Bone Canvas"></div>
+              <div class="swatch-pip" style="background: #ffffff;" title="#ffffff Pure Paper"></div>
+              <div class="swatch-pip" style="background: #93c5fd;" title="#93c5fd Tag Blue"></div>
+              <div class="swatch-pip" style="background: #1d5b43;" title="#1d5b43 Spruce"></div>
+            </div>
+            <ul class="feature-list">
+              <li>Clean floating capsule nav with user account trigger</li>
+              <li>Integrated trip input bar (Origin, Dest, Time)</li>
+              <li>Distraction-free 15-min checkpoint card &amp; departure scrubber</li>
+            </ul>
+          </div>
+          <div class="card-actions">
+            <a href="2b-simplified-minimal.html" target="_blank" class="btn-preview" style="background: #ea580c; color: #fff; border-color: #ea580c;">Open Fullscreen ↗</a>
+            <button class="btn-embed" onclick="loadFrame('2b-simplified-minimal.html', '2b-min')">Live Embed ↓</button>
+          </div>
+        </div>
+
+        <!-- Card 2B Sienna Studio Split -->
+        <div class="variation-card" style="border-color: rgba(234, 88, 12, 0.4); background: linear-gradient(180deg, #181515 0%, #11141a 100%);">
+          <div>
+            <div class="card-top">
+              <span class="card-number" style="background: rgba(234, 88, 12, 0.2); color: #fb923c;">VARIATION 2B SPLIT</span>
+              <span class="card-badge" style="color: #fb923c;">BALANCED STUDIO</span>
+            </div>
+            <h2 class="card-title">Nordic Sienna Studio</h2>
+            <p class="card-concept">
+              Adapts 2A's popular split sidebar + workspace structure into the warm, rich sienna terracotta palette. Inputs on the left, clear route corridor and scrubber on the right.
+            </p>
+            <div class="swatches-strip">
+              <div class="swatch-pip" style="background: #782e20;" title="#782e20 Sienna"></div>
+              <div class="swatch-pip" style="background: #f6f3eb;" title="#f6f3eb Bone Linen"></div>
+              <div class="swatch-pip" style="background: #ffffff;" title="#ffffff Paper"></div>
+              <div class="swatch-pip" style="background: #1d5b43;" title="#1d5b43 Spruce"></div>
+              <div class="swatch-pip" style="background: #c87508;" title="#c87508 Amber"></div>
+            </div>
+            <ul class="feature-list">
+              <li>Beloved 2A split layout (sidebar inputs + main workspace)</li>
+              <li>Warm sienna studio color accents &amp; Newsreader Serif</li>
+              <li>Clean, high-legibility departure candidate steps</li>
+            </ul>
+          </div>
+          <div class="card-actions">
+            <a href="2b-sienna-studio.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+            <button class="btn-embed" onclick="loadFrame('2b-sienna-studio.html', '2b-sienna')">Live Embed ↓</button>
+          </div>
+        </div>
+
+        <!-- Card 2B Immersive Editorial Clean -->
+        <div class="variation-card" style="border-color: rgba(234, 88, 12, 0.4); background: linear-gradient(180deg, #241411 0%, #11141a 100%);">
+          <div>
+            <div class="card-top">
+              <span class="card-number" style="background: rgba(234, 88, 12, 0.2); color: #fb923c;">VARIATION 2B IMMERSIVE</span>
+              <span class="card-badge" style="color: #fb923c;">DEEP CANVAS</span>
+            </div>
+            <h2 class="card-title">Terracotta Clean Editorial</h2>
+            <p class="card-concept">
+              Full deep terracotta canvas of 2B, but completely stripped of floating toolbars, fake widgets, and noise. A single unified bone card houses the route map, departure scrubber, and checkpoint table.
+            </p>
+            <div class="swatches-strip">
+              <div class="swatch-pip" style="background: #6f281a;" title="#6f281a Terracotta Canvas"></div>
+              <div class="swatch-pip" style="background: #f8f5ee;" title="#f8f5ee Bone Card"></div>
+              <div class="swatch-pip" style="background: #93c5fd;" title="#93c5fd Tag Blue"></div>
+              <div class="swatch-pip" style="background: #1d5b43;" title="#1d5b43 Spruce"></div>
+            </div>
+            <ul class="feature-list">
+              <li>Full deep terracotta backdrop with ivory serif headlines</li>
+              <li>Single unified bone folio card (no floating toolbars)</li>
+              <li>High contrast, confident, and editorial</li>
+            </ul>
+          </div>
+          <div class="card-actions">
+            <a href="2b-immersive-editorial.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+            <button class="btn-embed" onclick="loadFrame('2b-immersive-editorial.html', '2b-imm')">Live Embed ↓</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREVIOUS 2A & 2C CARDS -->
+      <div class="variations-grid" style="margin-bottom: 24px;">
+        <!-- Card 2A -->
+        <div class="variation-card" style="border-color: rgba(56, 189, 248, 0.3); background: #111726;">
+          <div>
+            <div class="card-top">
+              <span class="card-number" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">VARIATION 2A</span>
+              <span class="card-badge" style="color: #38bdf8;">USER FAVORITE</span>
+            </div>
+            <h2 class="card-title">Nordic Scenic &amp; Capsule</h2>
+            <p class="card-concept">
+              Floating pill navbar, atmospheric rolling highway landscape art, asymmetric hero with inline search capsule, and live data provider chips.
+            </p>
+            <div class="swatches-strip">
+              <div class="swatch-pip" style="background: #12161f;"></div>
+              <div class="swatch-pip" style="background: #ffffff;"></div>
+              <div class="swatch-pip" style="background: #1c563e;"></div>
+              <div class="swatch-pip" style="background: #b8d9ea;"></div>
+              <div class="swatch-pip" style="background: #d97706;"></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <a href="2a-scenic-capsule.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+            <button class="btn-embed" onclick="loadFrame('2a-scenic-capsule.html', '2a')">Live Embed ↓</button>
+          </div>
+        </div>
+
+        <!-- Card 2C -->
+        <div class="variation-card" style="border-color: rgba(16, 185, 129, 0.3); background: #111726;">
+          <div>
+            <div class="card-top">
+              <span class="card-number" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">VARIATION 2C</span>
+              <span class="card-badge" style="color: #34d399;">STUDIO HYBRID</span>
+            </div>
+            <h2 class="card-title">Linen Atlas &amp; Frosted HUD</h2>
+            <p class="card-concept">
+              Cool linen canvas with translucent frosted glass capsule header, floating frosted telemetry inspector HUD, and Scandinavian studio layout.
+            </p>
+            <div class="swatches-strip">
+              <div class="swatch-pip" style="background: #f5f4ef;"></div>
+              <div class="swatch-pip" style="background: #ffffff;"></div>
+              <div class="swatch-pip" style="background: #18583e;"></div>
+              <div class="swatch-pip" style="background: #9e3a2b;"></div>
+              <div class="swatch-pip" style="background: #111e2e;"></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <a href="2c-linen-frosted.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+            <button class="btn-embed" onclick="loadFrame('2c-linen-frosted.html', '2c')">Live Embed ↓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORIGINAL 5 VARIATIONS HEADING -->
+    <div style="margin-bottom: 24px; border-top: 1px solid var(--border); padding-top: 36px;">
+      <h2 style="font-size: 20px; font-weight: 700; color: #fff;">Original Core Design Explorations (1 through 5)</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Five foundation directions covering avionics, cartography, OLED night mode, overland guide, and brutalist telemetry.</p>
+    </div>
+
+    <!-- 5 Variations Grid -->
+    <div class="variations-grid">
+      
+      <!-- Card 1 -->
+      <div class="variation-card">
+        <div>
+          <div class="card-top">
+            <span class="card-number">DIRECTION 01</span>
+            <span class="card-badge">AVIONICS HUD</span>
+          </div>
+          <h2 class="card-title">Alpine Radar</h2>
+          <p class="card-concept">
+            High-precision flight &amp; transit meteorology console. Cold isobaric blues, tabular telemetry, heads-up display lines, vector wind barb accents, razor-sharp status pips.
+          </p>
+          <div class="swatches-strip">
+            <div class="swatch-pip" style="background: #070b14;" title="#070b14 Void"></div>
+            <div class="swatch-pip" style="background: #0e1726;" title="#0e1726 Panel"></div>
+            <div class="swatch-pip" style="background: #38bdf8;" title="#38bdf8 HUD Cyan"></div>
+            <div class="swatch-pip" style="background: #10b981;" title="#10b981 Emerald Clear"></div>
+            <div class="swatch-pip" style="background: #f59e0b;" title="#f59e0b Caution Amber"></div>
+            <div class="swatch-pip" style="background: #f43f5e;" title="#f43f5e Severe Rose"></div>
+          </div>
+          <ul class="feature-list">
+            <li>Type: Space Grotesk + Inter + JetBrains Mono</li>
+            <li>Dynamic HUD storm overlays &amp; radar telemetry</li>
+            <li>Cockpit-style credential &amp; session manager</li>
+          </ul>
+        </div>
+        <div class="card-actions">
+          <a href="1-alpine-radar.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+          <button class="btn-embed" onclick="loadFrame('1-alpine-radar.html', 1)">Live Embed ↓</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="variation-card">
+        <div>
+          <div class="card-top">
+            <span class="card-number">DIRECTION 02</span>
+            <span class="card-badge">SCANDINAVIAN ATLAS</span>
+          </div>
+          <h2 class="card-title">Nordic Cartography</h2>
+          <p class="card-concept">
+            National highway dispatch atlas. Linen paper canvas, deep fjord maritime ink, subtle topo contour lines, tactile physical map markers, rooted in classic European transit signage.
+          </p>
+          <div class="swatches-strip">
+            <div class="swatch-pip" style="background: #f4f6f2;" title="#f4f6f2 Mist"></div>
+            <div class="swatch-pip" style="background: #ffffff;" title="#ffffff Paper"></div>
+            <div class="swatch-pip" style="background: #1d5b43;" title="#1d5b43 Spruce Green"></div>
+            <div class="swatch-pip" style="background: #162638;" title="#162638 Fjord Slate"></div>
+            <div class="swatch-pip" style="background: #d97706;" title="#d97706 Warning Ochre"></div>
+            <div class="swatch-pip" style="background: #be123c;" title="#be123c Brick"></div>
+          </div>
+          <ul class="feature-list">
+            <li>Type: Newsreader Serif + Plus Jakarta Sans + DM Mono</li>
+            <li>Calm, authoritative transit agency aesthetic</li>
+            <li>Refined dispatch folio authentication card</li>
+          </ul>
+        </div>
+        <div class="card-actions">
+          <a href="2-nordic-dispatch.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+          <button class="btn-embed" onclick="loadFrame('2-nordic-dispatch.html', 2)">Live Embed ↓</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="variation-card">
+        <div>
+          <div class="card-top">
+            <span class="card-number">DIRECTION 03</span>
+            <span class="card-badge">OLED NIGHT CRUISE</span>
+          </div>
+          <h2 class="card-title">Highway Twilight</h2>
+          <p class="card-concept">
+            Designed for night driving and sunset departure. Midnight obsidian surfaces with luminous ambient glow, twilight violet and dusk horizon orange inspired by headlights on the interstate.
+          </p>
+          <div class="swatches-strip">
+            <div class="swatch-pip" style="background: #080910;" title="#080910 Obsidian"></div>
+            <div class="swatch-pip" style="background: #11131f;" title="#11131f Glass"></div>
+            <div class="swatch-pip" style="background: #6366f1;" title="#6366f1 Twilight Violet"></div>
+            <div class="swatch-pip" style="background: #f97316;" title="#f97316 Sunset Flame"></div>
+            <div class="swatch-pip" style="background: #10b981;" title="#10b981 Mint Route"></div>
+            <div class="swatch-pip" style="background: #ef4444;" title="#ef4444 Ruby Hazard"></div>
+          </div>
+          <ul class="feature-list">
+            <li>Type: Sora + Outfit + Space Grotesk</li>
+            <li>Low-glare dark mode with neon polyline glow</li>
+            <li>Smoked glassmorphism login portal</li>
+          </ul>
+        </div>
+        <div class="card-actions">
+          <a href="3-twilight-cruiser.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+          <button class="btn-embed" onclick="loadFrame('3-twilight-cruiser.html', 3)">Live Embed ↓</button>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="variation-card">
+        <div>
+          <div class="card-top">
+            <span class="card-number">DIRECTION 04</span>
+            <span class="card-badge">WAYFARER FIELD GUIDE</span>
+          </div>
+          <h2 class="card-title">Terra Americana</h2>
+          <p class="card-concept">
+            Classic American cross-country expedition &amp; field instrument. Sun-bleached parchment, deep ponderosa cedar, warm saddle leather, topographical relief contours, brass highway route shields.
+          </p>
+          <div class="swatches-strip">
+            <div class="swatch-pip" style="background: #faf5ea;" title="#faf5ea Parchment"></div>
+            <div class="swatch-pip" style="background: #1b3a2a;" title="#1b3a2a Ponderosa Cedar"></div>
+            <div class="swatch-pip" style="background: #8c4e23;" title="#8c4e23 Saddle Tan"></div>
+            <div class="swatch-pip" style="background: #ca8a04;" title="#ca8a04 Brass Ochre"></div>
+            <div class="swatch-pip" style="background: #b91c1c;" title="#b91c1c Storm Clay"></div>
+            <div class="swatch-pip" style="background: #232724;" title="#232724 Charcoal"></div>
+          </div>
+          <ul class="feature-list">
+            <li>Type: Fraunces Serif + Public Sans + DM Mono</li>
+            <li>Ohio byways expedition ledger with mileposts</li>
+            <li>Warm overland member sign-in portal</li>
+          </ul>
+        </div>
+        <div class="card-actions">
+          <a href="4-terra-americana.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+          <button class="btn-embed" onclick="loadFrame('4-terra-americana.html', 4)">Live Embed ↓</button>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="variation-card">
+        <div>
+          <div class="card-top">
+            <span class="card-number">DIRECTION 05</span>
+            <span class="card-badge">HIGH-DENSITY TRANSIT</span>
+          </div>
+          <h2 class="card-title">Tokyo Kinetic</h2>
+          <p class="card-concept">
+            High-contrast neo-brutalist transit display. Stark modular blocks, punchy monochrome with electric safety yellow, micro-grids, stark divider rules, zero-fluff data density.
+          </p>
+          <div class="swatches-strip">
+            <div class="swatch-pip" style="background: #ffffff;" title="#ffffff White"></div>
+            <div class="swatch-pip" style="background: #09090b;" title="#09090b Carbon"></div>
+            <div class="swatch-pip" style="background: #facc15;" title="#facc15 Safety Yellow"></div>
+            <div class="swatch-pip" style="background: #2563eb;" title="#2563eb Signal Blue"></div>
+            <div class="swatch-pip" style="background: #e11d48;" title="#e11d48 Alert Red"></div>
+            <div class="swatch-pip" style="background: #16a34a;" title="#16a34a Clear Green"></div>
+          </div>
+          <ul class="feature-list">
+            <li>Type: Syne Display + IBM Plex Mono + Inter</li>
+            <li>Mechanical block layouts &amp; hazard striping</li>
+            <li>High-speed brutalist operator access portal</li>
+          </ul>
+        </div>
+        <div class="card-actions">
+          <a href="5-kinetic-telemetry.html" target="_blank" class="btn-preview">Open Fullscreen ↗</a>
+          <button class="btn-embed" onclick="loadFrame('5-kinetic-telemetry.html', 5)">Live Embed ↓</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Live Interactive Preview Sandbox -->
+    <section class="sandbox-section">
+      <div class="sandbox-header">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 700; color: #fff;">Interactive Workbench Preview</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">
+            Interact directly with the planner, departure scrubber, and auth switches below.
+          </p>
+        </div>
+        <div class="sandbox-tabs">
+          <button id="sb-2b-min" class="sandbox-btn active" style="border-color: #ea580c; color: #fff; background: #ea580c;" onclick="loadFrame('2b-simplified-minimal.html', '2b-min')">★ 2B Minimal (Top Pick)</button>
+          <button id="sb-2b-sienna" class="sandbox-btn" onclick="loadFrame('2b-sienna-studio.html', '2b-sienna')">2B Split Studio</button>
+          <button id="sb-2b-imm" class="sandbox-btn" onclick="loadFrame('2b-immersive-editorial.html', '2b-imm')">2B Immersive</button>
+          <button id="sb-2a" class="sandbox-btn" onclick="loadFrame('2a-scenic-capsule.html', '2a')">2A Nordic Scenic</button>
+          <button id="sb-2c" class="sandbox-btn" onclick="loadFrame('2c-linen-frosted.html', '2c')">2C Linen Studio</button>
+          <button id="sb-2b" class="sandbox-btn" onclick="loadFrame('2b-terracotta-tag.html', '2b')">2B Pinned Tag</button>
+          <button id="sb-1" class="sandbox-btn" onclick="loadFrame('1-alpine-radar.html', '1')">1. Alpine Radar</button>
+          <button id="sb-3" class="sandbox-btn" onclick="loadFrame('3-twilight-cruiser.html', '3')">3. Twilight Cruiser</button>
+        </div>
+      </div>
+
+      <div class="preview-frame-container">
+        <iframe id="preview-iframe" class="preview-frame" src="2b-simplified-minimal.html"></iframe>
+      </div>
+    </section>
+
+    <!-- Comparison Matrix -->
+    <section class="matrix-section">
+      <h2 class="matrix-title">Design Direction Comparison Matrix</h2>
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Direction</th>
+            <th>Primary Palette</th>
+            <th>Typography</th>
+            <th>Design Mood &amp; Philosophy</th>
+            <th>Best Suited For</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1. Alpine Radar</strong></td>
+            <td>Void Slate (#070b14), HUD Cyan (#38bdf8), Emerald (#10b981), Amber (#f59e0b)</td>
+            <td>Space Grotesk, Inter, JetBrains Mono</td>
+            <td>Cold, technical, aerospace telemetry instrument with glowing status nodes</td>
+            <td>Technical drivers wanting pilot-level weather precision</td>
+          </tr>
+          <tr>
+            <td><strong>2. Nordic Cartography</strong></td>
+            <td>Linen Canvas (#f4f6f2), Spruce (#1d5b43), Fjord (#162638), Warning (#d97706)</td>
+            <td>Newsreader Serif, Plus Jakarta Sans, DM Mono</td>
+            <td>Tactile paper atlas, calm editorial hierarchy, European transit authority</td>
+            <td>Drivers seeking serene, grounded, and elegant dispatch guidance</td>
+          </tr>
+          <tr>
+            <td><strong>3. Highway Twilight</strong></td>
+            <td>Obsidian (#080910), Twilight Violet (#6366f1), Sunset Flame (#f97316)</td>
+            <td>Sora, Outfit, Space Grotesk</td>
+            <td>Low-glare night interstate driving, horizon gradients, glowing polyline vectors</td>
+            <td>Sunset commuters and overnight interstate highway journeys</td>
+          </tr>
+          <tr>
+            <td><strong>4. Terra Americana</strong></td>
+            <td>Parchment (#faf5ea), Cedar (#1b3a2a), Saddle Tan (#8c4e23), Brass (#ca8a04)</td>
+            <td>Fraunces Serif, Public Sans, DM Mono</td>
+            <td>Historic American highway wayfarer, expedition ledger, topo relief contours</td>
+            <td>Scenic byways, road trips, and overland adventures across Ohio</td>
+          </tr>
+          <tr>
+            <td><strong>5. Tokyo Kinetic</strong></td>
+            <td>Stark White (#ffffff), Carbon (#09090b), Safety Yellow (#facc15), Cobalt (#2563eb)</td>
+            <td>Syne Display, IBM Plex Mono, Inter</td>
+            <td>High-contrast neo-brutalist transit display, mechanical density, high-speed glance</td>
+            <td>Fast decision-making, high sunlight visibility, modern tech styling</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+    function loadFrame(url, id) {
+      document.getElementById('preview-iframe').src = url;
+      document.querySelectorAll('.sandbox-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('sb-' + id);
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+</body>
+</html>
