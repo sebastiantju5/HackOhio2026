@@ -104,6 +104,15 @@ def fetch_routes(origin, destination, departure, alternatives=True):
     return route_cache.get_or_load(key, load)
 
 
+def forecast_model(locations):
+    """HRRR covers the continental US. Anywhere else uses the global GFS model."""
+    def in_hrrr(lon, lat):
+        return -134 <= lon <= -60 and 21 <= lat <= 53
+    if locations and all(in_hrrr(lon, lat) for lon, lat in locations):
+        return "gfs_hrrr", "NOAA HRRR (gfs_hrrr)"
+    return "gfs_seamless", "NOAA GFS (gfs_seamless)"
+
+
 def fetch_forecasts(routes, start, end):
     points = [p for route in routes for p in route["checkpoints"]]
     # Keep sensitivity lookups covered and align preceding-sum endpoints to quarter hours.
@@ -112,14 +121,15 @@ def fetch_forecasts(routes, start, end):
     last = end + timedelta(seconds=max(r["durationSeconds"] for r in routes), minutes=30)
     last = last.replace(second=0, microsecond=0) + timedelta(minutes=(15 - last.minute % 15) % 15)
     locations = list(dict.fromkeys(tuple(p["coordinates"]) for p in points))
-    key = (tuple(locations), iso(first), iso(last))
+    model, model_label = forecast_model(locations)
+    key = (tuple(locations), iso(first), iso(last), model)
 
     def load():
         names = {"temperatureC": "temperature_2m", "precipitationMm": "precipitation", "visibilityM": "visibility",
                  "windKph": "wind_speed_10m", "gustKph": "wind_gusts_10m", "windDirectionDeg": "wind_direction_10m"}
         params = {"latitude": ",".join(str(p[1]) for p in locations),
                   "longitude": ",".join(str(p[0]) for p in locations),
-                  "minutely_15": ",".join(names.values()), "models": "gfs_hrrr", "timezone": "GMT",
+                  "minutely_15": ",".join(names.values()), "models": model, "timezone": "GMT",
                   "timeformat": "unixtime", "temperature_unit": "celsius", "wind_speed_unit": "kmh",
                   "precipitation_unit": "mm", "start_minutely_15": first.strftime("%Y-%m-%dT%H:%M"),
                   "end_minutely_15": last.strftime("%Y-%m-%dT%H:%M")}
@@ -133,12 +143,12 @@ def fetch_forecasts(routes, start, end):
             times = block.get("time", [])
             if not times or any(not isinstance(t, (float, int)) for t in times) or any(b - a != 900 for a, b in zip(times, times[1:])):
                 raise ProviderError("Open-Meteo did not return a regular 15-minute time series.")
-            values = {field: block.get(name, block.get(name + "_gfs_hrrr", [])) for field, name in names.items()}
+            values = {field: block.get(name) or block.get(f"{name}_{model}") or [] for field, name in names.items()}
             by_location[location] = {"times": times, "values": values, "intervalSeconds": 900,
                                      "gridCoordinates": [item.get("longitude"), item.get("latitude")]}
         fetched = iso(datetime.now(UTC))
         all_times = [stamp for series in by_location.values() for stamp in series["times"]]
-        source = {"provider": "Open-Meteo", "model": "NOAA HRRR (gfs_hrrr)", "retrievedAt": fetched,
+        source = {"provider": "Open-Meteo", "model": model_label, "retrievedAt": fetched,
                   "validStart": iso(datetime.fromtimestamp(min(all_times), UTC)),
                   "validEnd": iso(datetime.fromtimestamp(max(all_times), UTC)), "cadenceMinutes": 15,
                   "note": "15-minute returned cadence; some variables may be derived or interpolated. Model issue time not supplied."}

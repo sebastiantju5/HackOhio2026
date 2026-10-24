@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from corridor import UTC, lookup_forecast, score_weather
-from providers import BoundedCache, ProviderError, fetch_forecasts, fetch_routes, request_json
+from providers import BoundedCache, ProviderError, fetch_forecasts, fetch_routes, forecast_model, request_json
 
 START = datetime(2026, 10, 24, 21, tzinfo=UTC)
 
@@ -32,6 +32,7 @@ class ProviderTests(unittest.TestCase):
         query = parse_qs(urlparse(get.call_args.args[0]).query)
         self.assertEqual(query["longitude"], ["-83,-82"])
         self.assertEqual(query["models"], ["gfs_hrrr"])
+        self.assertEqual(forecast_model([(-1.25, 51.75)])[0], "gfs_seamless")
         self.assertEqual(source["cadenceMinutes"], 15)
         self.assertEqual(forecasts["one"][0]["gridCoordinates"], [-83, 40])
         self.assertEqual(forecasts, again)

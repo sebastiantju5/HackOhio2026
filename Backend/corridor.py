@@ -60,11 +60,11 @@ def validate_request(data, now=None):
         if not isinstance(coordinate, list) or len(coordinate) != 2 or not all(map(finite_number, coordinate)):
             raise TripError(f"{key.title()} coordinates must be [longitude, latitude].")
         lon, lat = coordinate
-        if not (-84.9 <= lon <= -80.4 and 38.3 <= lat <= 42.4):
-            raise TripError("This MVP supports locations in the Ohio region only.")
+        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            raise TripError(f"{key.title()} coordinates must be a real longitude and latitude.")
         name = point.get("name", key.title())
-        if not isinstance(name, str) or not name.strip() or len(name) > 100:
-            raise TripError("Place names must be between 1 and 100 characters.")
+        if not isinstance(name, str) or not name.strip() or len(name) > 180:
+            raise TripError("Place names must be between 1 and 180 characters.")
         points.append({"name": name.strip(), "coordinates": coordinate})
     if points[0]["coordinates"] == points[1]["coordinates"]:
         raise TripError("Choose different origin and destination locations.")

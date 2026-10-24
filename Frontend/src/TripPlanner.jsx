@@ -3,6 +3,8 @@ import RouteMap from './RouteMap.jsx'
 import DepartureScrubber from './DepartureScrubber.jsx'
 import CheckpointPanel from './CheckpointPanel.jsx'
 import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
+import PlaceField from './PlaceField.jsx'
+import { geocodeAddress, mapsKey } from './googleMaps.js'
 import './TripPlanner.css'
 
 const PLACES = [
@@ -17,13 +19,30 @@ const PLACES = [
 
 function defaults() {
   const start = new Date(Math.ceil((Date.now() + 30 * 60000) / 900000) * 900000)
-  return { origin: 'Columbus, OH', destination: 'Cleveland, OH', start: toWallInput(start), end: toWallInput(new Date(start.getTime() + 7200000)), alternatives: true, mode: 'demo' }
+  return {
+    origin: 'Columbus, OH', destination: 'Cleveland, OH', originPlace: PLACES[0], destinationPlace: PLACES[1],
+    start: toWallInput(start), end: toWallInput(new Date(start.getTime() + 7200000)), alternatives: true, mode: 'demo',
+  }
+}
+
+async function resolvePlaces(form) {
+  if (form.mode !== 'live') return form
+  const originPlace = form.originPlace?.coordinates && form.originPlace.name === form.origin
+    ? form.originPlace
+    : await geocodeAddress(form.origin)
+  const destinationPlace = form.destinationPlace?.coordinates && form.destinationPlace.name === form.destination
+    ? form.destinationPlace
+    : await geocodeAddress(form.destination)
+  return { ...form, origin: originPlace.name, destination: destinationPlace.name, originPlace, destinationPlace }
 }
 
 async function getAnalysis(form, signal) {
+  if (!form.originPlace?.coordinates || !form.destinationPlace?.coordinates) {
+    throw new Error('Choose a starting point and a destination.')
+  }
   const response = await fetch('/api/trips/analyze', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-    body: JSON.stringify({ origin: PLACES.find(place => place.name === form.origin), destination: PLACES.find(place => place.name === form.destination),
+    body: JSON.stringify({ origin: form.originPlace, destination: form.destinationPlace,
       departureStart: fromWallInput(form.start), departureEnd: fromWallInput(form.end), timeZone: TIME_ZONE,
       includeAlternatives: form.alternatives, dataMode: form.mode }),
   })
@@ -75,7 +94,32 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
   }
 
   function changeMode(mode) {
-    setForm(current => ({ ...current, mode, ...(mode === 'demo' ? { origin: PLACES[0].name, destination: PLACES[1].name } : {}) }))
+    setForm(current => ({
+      ...current,
+      mode,
+      ...(mode === 'demo' ? { origin: PLACES[0].name, destination: PLACES[1].name, originPlace: PLACES[0], destinationPlace: PLACES[1] } : {}),
+    }))
+    setDirty(true)
+    setError('')
+  }
+
+  function editPlace(field, text) {
+    const placeField = field === 'origin' ? 'originPlace' : 'destinationPlace'
+    setForm(current => ({
+      ...current,
+      [field]: text,
+      [placeField]: current[placeField]?.name === text ? current[placeField] : null,
+    }))
+    setDirty(true)
+    setError('')
+  }
+
+  function choosePlace(field, place) {
+    setForm(current => ({
+      ...current,
+      [field]: place.name,
+      [field === 'origin' ? 'originPlace' : 'destinationPlace']: place,
+    }))
     setDirty(true)
     setError('')
   }
@@ -88,7 +132,10 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
     setBusy(true)
     setError('')
     try {
-      const data = await getAnalysis(form, controller.signal)
+      const ready = await resolvePlaces(form)
+      if (controller.signal.aborted) return
+      setForm(ready)
+      const data = await getAnalysis(ready, controller.signal)
       if (!controller.signal.aborted) accept(data)
     } catch (err) {
       if (err.name !== 'AbortError') setError(err instanceof TypeError ? 'Cannot reach the planner. Start the Flask backend on port 5001, then try again.' : err.message)
@@ -155,7 +202,9 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
           Your clearest drive starts with <em>better timing.</em>
         </h1>
         <p className="hero-sub">
-          Pairing your arrival coordinates with high-resolution NOAA HRRR point forecasts across Ohio highways.
+          {form.mode === 'live'
+            ? 'Type any starting point and destination. Forecasts follow the drive for trips up to four hours.'
+            : 'A simulated Columbus to Cleveland drive. Switch to Live forecast to search any place.'}
         </p>
 
         {/* Clean Integrated Trip Capsule Form */}
@@ -166,26 +215,30 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
               Simulated
             </button>
             <button type="button" aria-pressed={form.mode === 'live'} onClick={() => changeMode('live')}>
-              Live HRRR
+              Live forecast
             </button>
           </fieldset>
 
           <div className="capsule-locations">
-            <label className="capsule-input-pair">
-              <span className="field-hint">From</span>
-              <select value={form.origin} disabled={form.mode === 'demo' || busy} onChange={event => update('origin', event.target.value)}>
-                {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
-              </select>
-            </label>
-
-            <span className="capsule-divider" aria-hidden="true">→</span>
-
-            <label className="capsule-input-pair">
-              <span className="field-hint">To</span>
-              <select value={form.destination} disabled={form.mode === 'demo' || busy} onChange={event => update('destination', event.target.value)}>
-                {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
-              </select>
-            </label>
+            {form.mode === 'demo' ? <>
+              <label className="capsule-input-pair">
+                <span className="field-hint">From</span>
+                <select value={form.origin} disabled>
+                  {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
+                </select>
+              </label>
+              <span className="capsule-divider" aria-hidden="true">→</span>
+              <label className="capsule-input-pair">
+                <span className="field-hint">To</span>
+                <select value={form.destination} disabled>
+                  {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
+                </select>
+              </label>
+            </> : mapsKey() ? <>
+              <PlaceField hint="From" value={form.origin} disabled={busy} onText={text => editPlace('origin', text)} onPlace={place => choosePlace('origin', place)} />
+              <span className="capsule-divider" aria-hidden="true">→</span>
+              <PlaceField hint="To" value={form.destination} disabled={busy} onText={text => editPlace('destination', text)} onPlace={place => choosePlace('destination', place)} />
+            </> : <p className="place-key-note">Add VITE_GOOGLE_MAPS_API_KEY to Frontend/.env, enable Maps JavaScript, Places, Geocoding, and Directions, then restart the site.</p>}
           </div>
 
           <div className="capsule-times">
@@ -255,7 +308,7 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
 
           {/* Map & Checkpoint Split */}
           <div className="bone-split-layout">
-            <RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} />
+            <RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
             <CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={candidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} />
           </div>
 

@@ -2,10 +2,134 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { LEVELS } from './format.js'
+import { loadGoogleMaps, mapsKey } from './googleMaps.js'
 
 const latLng = coordinates => [coordinates[1], coordinates[0]]
 
-export default function RouteMap({ route, candidate, selectedPoint, onSelect, origin, destination }) {
+function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace }) {
+  const container = useRef(null)
+  const map = useRef(null)
+  const drawn = useRef([])
+  const [mapError, setMapError] = useState('')
+  const [mapReady, setMapReady] = useState(false)
+
+  function clearDrawn() {
+    drawn.current.forEach((item) => item.setMap(null))
+    drawn.current = []
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    loadGoogleMaps().then((google) => {
+      if (cancelled || !container.current) return
+      map.current = new google.maps.Map(container.current, {
+        center: { lat: 39.96, lng: -82.99 },
+        zoom: 6,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      })
+      setMapReady(true)
+      setMapError('')
+    }).catch((error) => {
+      if (!cancelled) setMapError(error.message)
+    })
+    return () => {
+      cancelled = true
+      clearDrawn()
+      map.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const google = window.google
+    if (!mapReady || !map.current || !google?.maps || !route) return
+    clearDrawn()
+    const bounds = new google.maps.LatLngBounds()
+    const addPath = (coordinates, options) => {
+      const path = coordinates.map(([lng, lat]) => ({ lat, lng }))
+      path.forEach((point) => bounds.extend(point))
+      const line = new google.maps.Polyline({ ...options, path, map: map.current })
+      drawn.current.push(line)
+      return line
+    }
+    addPath(route.geometry.coordinates, { strokeColor: '#fbf9ef', strokeWeight: 12, strokeOpacity: 0.95 })
+    route.segments.forEach((segment, index) => {
+      const level = candidate.segmentLevels[index]
+      const line = addPath(segment.coordinates, {
+        strokeColor: LEVELS[level].color,
+        strokeWeight: 6,
+        strokeOpacity: 1,
+        icons: level === 'unknown' ? [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '12px' }] : undefined,
+      })
+      line.addListener('click', () => onSelect(index))
+    })
+    route.checkpoints.forEach((point, index) => {
+      const level = candidate.checkpoints[index].level
+      const endpoint = index === 0 || index === route.checkpoints.length - 1
+      const position = { lat: point.coordinates[1], lng: point.coordinates[0] }
+      bounds.extend(position)
+      const marker = new google.maps.Marker({
+        position,
+        map: map.current,
+        label: endpoint ? (index === 0 ? 'A' : 'B') : String(index + 1),
+        title: endpoint ? (index === 0 ? origin : destination) : `Checkpoint ${index + 1}: ${LEVELS[level].label}`,
+      })
+      marker.addListener('click', () => onSelect(index))
+      drawn.current.push(marker)
+    })
+    const selected = route.checkpoints[selectedPoint]
+    if (selected) {
+      drawn.current.push(new google.maps.Circle({
+        map: map.current,
+        center: { lat: selected.coordinates[1], lng: selected.coordinates[0] },
+        radius: 1800,
+        strokeColor: '#203f31',
+        strokeWeight: 2,
+        fillOpacity: 0,
+        clickable: false,
+      }))
+    }
+    if (!bounds.isEmpty()) map.current.fitBounds(bounds, 55)
+  }, [mapReady, route, candidate, selectedPoint, onSelect, origin, destination])
+
+  useEffect(() => {
+    const google = window.google
+    if (!mapReady || !map.current || !google?.maps || route) return undefined
+    if (!originPlace?.coordinates || !destinationPlace?.coordinates) return undefined
+    let cancelled = false
+    new google.maps.DirectionsService().route({
+      origin: { lng: originPlace.coordinates[0], lat: originPlace.coordinates[1] },
+      destination: { lng: destinationPlace.coordinates[0], lat: destinationPlace.coordinates[1] },
+      travelMode: google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (cancelled || status !== 'OK' || !result?.routes?.[0]) return
+      clearDrawn()
+      const path = result.routes[0].overview_path
+      drawn.current.push(new google.maps.Polyline({
+        path,
+        map: map.current,
+        strokeColor: '#254d3a',
+        strokeWeight: 5,
+      }))
+      const bounds = new google.maps.LatLngBounds()
+      path.forEach((point) => bounds.extend(point))
+      map.current.fitBounds(bounds, 55)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [mapReady, route, originPlace, destinationPlace])
+
+  return <div className="map-wrap">
+    <div ref={container} className="route-map" role="region" aria-label="Google map of the route. Select numbered checkpoints, or use the checkpoint list below." />
+    {mapError && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>The map needs an API key.</h2><p>{mapError}</p></div>}
+    {!mapError && !route && !(originPlace?.coordinates && destinationPlace?.coordinates) && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>A little foresight.<br />A better drive.</h2><p>Choose a starting point and a destination anywhere, then analyze the trip.</p></div>}
+    <div className="map-legend" aria-label="Exposure legend">{Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}</div>
+  </div>
+}
+
+function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination }) {
   const container = useRef(null)
   const map = useRef(null)
   const layers = useRef(null)
@@ -68,4 +192,8 @@ export default function RouteMap({ route, candidate, selectedPoint, onSelect, or
     {tileIssue && <p className="tile-warning" role="status">Some map tiles are unavailable. Checkpoints and route geometry remain interactive.</p>}
     <div className="map-legend" aria-label="Exposure legend">{Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}</div>
   </div>
+}
+
+export default function RouteMap(props) {
+  return mapsKey() ? <GoogleRouteMap {...props} /> : <LeafletRouteMap {...props} />
 }
