@@ -13,7 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 load_dotenv(Path(__file__).with_name(".env"))
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql:///locallens")
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
@@ -190,4 +190,4 @@ init_db()
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5001, use_reloader=False)

@@ -36,6 +36,12 @@ function clearSession() {
   sessionStorage.removeItem('locallens-session')
 }
 
+function savedSession() {
+  const stored = readStoredSession()
+  if (!stored?.token || !stored?.user?.email) return null
+  return stored
+}
+
 function validate(form, mode) {
   const errors = {}
   if (mode === 'signup' && form.name.trim().length < 2) {
@@ -57,37 +63,35 @@ export default function SignIn() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [session, setSession] = useState(null)
-  const [checking, setChecking] = useState(true)
+  const [session, setSession] = useState(savedSession)
 
   useEffect(() => {
     const stored = readStoredSession()
-    if (!stored?.token) {
-      setChecking(false)
-      return
-    }
+    if (!stored?.token) return
 
-    let cancelled = false
+    const controller = new AbortController()
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${stored.token}` },
+      signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error('expired')
-        return response.json()
+        if (readStoredSession()?.token !== stored.token) return
+        if (response.status === 401) {
+          clearSession()
+          setSession(null)
+          return
+        }
+        if (!response.ok) return
+        const data = await response.json()
+        if (!data?.user?.email) return
+        if (readStoredSession()?.token !== stored.token) return
+        setSession({ token: stored.token, user: data.user })
       })
-      .then((data) => {
-        if (!cancelled) setSession({ token: stored.token, user: data.user })
-      })
-      .catch(() => {
-        clearSession()
-      })
-      .finally(() => {
-        if (!cancelled) setChecking(false)
+      .catch((error) => {
+        if (error.name === 'AbortError') return
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [])
 
   function updateField(field, value) {
@@ -196,12 +200,10 @@ export default function SignIn() {
       </section>
 
       <section className="auth-panel">
-        {checking ? (
-          <p className="checking">Checking your session…</p>
-        ) : session ? (
+        {session ? (
           <div className="signed-in">
             <p className="eyebrow">Signed in</p>
-            <h2>Welcome back, {session.user.name.split(' ')[0]}.</h2>
+            <h2>Welcome back, {(session.user.name || 'there').split(' ')[0]}.</h2>
             <p className="panel-copy">You’re in as {session.user.email}.</p>
             <button type="button" className="primary" onClick={signOut}>
               Sign out
