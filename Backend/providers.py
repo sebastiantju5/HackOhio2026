@@ -6,8 +6,8 @@ import socket
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from threading import Lock
-from time import monotonic
+from threading import RLock
+from time import monotonic, sleep
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -25,7 +25,23 @@ class BoundedCache:
     def __init__(self, maximum=32, ttl=600):
         self.maximum, self.ttl = maximum, ttl
         self.items = OrderedDict()
-        self.lock = Lock()
+        self.locations = OrderedDict()
+        self.lock = RLock()
+
+    def get_location(self, key):
+        with self.lock:
+            val = self.locations.get(key)
+            if val and monotonic() - val[0] < self.ttl:
+                self.locations.move_to_end(key)
+                return val[1]
+            return None
+
+    def set_location(self, key, value):
+        with self.lock:
+            self.locations[key] = (monotonic(), value)
+            self.locations.move_to_end(key)
+            while len(self.locations) > 500:
+                self.locations.popitem(last=False)
 
     def get_or_load(self, key, loader):
         # One loader at a time also deduplicates identical concurrent requests.
@@ -47,24 +63,33 @@ route_cache = BoundedCache(ttl=300)
 weather_cache = BoundedCache()
 
 
-def request_json(url, provider):
-    try:
-        request = Request(url, headers={"User-Agent": "Weatherway-HackOhio/0.1 (local development)", "Accept": "application/json"})
-        with urlopen(request, timeout=18) as response:
-            payload = response.read(8_000_001)
-            if len(payload) > 8_000_000:
-                raise ProviderError(f"{provider} response exceeded the supported size.")
-            return json.loads(payload)
-    except HTTPError as error:
-        if error.code in (401, 403):
-            raise ProviderError(f"{provider} access was denied. Check the configured provider credentials.", 503) from None
-        if error.code == 429:
-            raise ProviderError(f"{provider} rate limit reached. Wait before retrying.", 503) from None
-        raise ProviderError(f"{provider} returned HTTP {error.code}. Try again or select the simulated scenario.") from None
-    except (socket.timeout, TimeoutError):
-        raise ProviderError(f"{provider} timed out. Try again or select the simulated scenario.", 504) from None
-    except (URLError, OSError, ValueError):
-        raise ProviderError(f"Cannot reach {provider} or read its response. Live data was not replaced with a simulation.", 503) from None
+def request_json(url, provider, retries=1):
+    for attempt in range(retries + 1):
+        try:
+            request = Request(url, headers={"User-Agent": "Weatherway-HackOhio/0.1 (local development)", "Accept": "application/json"})
+            with urlopen(request, timeout=18) as response:
+                payload = response.read(8_000_001)
+                if len(payload) > 8_000_000:
+                    raise ProviderError(f"{provider} response exceeded the supported size.")
+                return json.loads(payload)
+        except HTTPError as error:
+            if error.code == 429 and attempt < retries and provider == "Open-Meteo":
+                retry_after = error.headers.get("Retry-After") if hasattr(error, "headers") and error.headers else None
+                try:
+                    wait_seconds = float(retry_after) if retry_after else (1.5 * (attempt + 1))
+                except (ValueError, TypeError):
+                    wait_seconds = 1.5 * (attempt + 1)
+                sleep(min(wait_seconds, 10.0))
+                continue
+            if error.code in (401, 403):
+                raise ProviderError(f"{provider} access was denied. Check the configured provider credentials.", 503) from None
+            if error.code == 429:
+                raise ProviderError(f"{provider} rate limit reached. Wait before retrying.", 503) from None
+            raise ProviderError(f"{provider} returned HTTP {error.code}. Try again or select the simulated scenario.") from None
+        except (socket.timeout, TimeoutError):
+            raise ProviderError(f"{provider} timed out. Try again or select the simulated scenario.", 504) from None
+        except (URLError, OSError, ValueError):
+            raise ProviderError(f"Cannot reach {provider} or read its response. Live data was not replaced with a simulation.", 503) from None
 
 
 def routing_provider():
@@ -127,39 +152,55 @@ def fetch_forecasts(routes, start, end):
     key = (tuple(locations), iso(first), iso(last), model)
 
     def load():
-        names = {"temperatureC": "temperature_2m", "precipitationMm": "precipitation", "visibilityM": "visibility",
-                 "windKph": "wind_speed_10m", "gustKph": "wind_gusts_10m", "windDirectionDeg": "wind_direction_10m"}
+        cached_by_loc = {}
+        missing_locations = []
+        first_stamp, last_stamp = first.timestamp(), last.timestamp()
+        for loc in locations:
+            cached = weather_cache.get_location((loc, model))
+            if cached and cached["times"][0] <= first_stamp and cached["times"][-1] >= last_stamp:
+                cached_by_loc[loc] = cached
+            else:
+                missing_locations.append(loc)
 
-        def fetch_chunk(chunk):
-            params = {"latitude": ",".join(str(round(p[1], 4)) for p in chunk),
-                      "longitude": ",".join(str(round(p[0], 4)) for p in chunk),
-                      "minutely_15": ",".join(names.values()), "models": model, "timezone": "GMT",
-                      "timeformat": "unixtime", "temperature_unit": "celsius", "wind_speed_unit": "kmh",
-                      "precipitation_unit": "mm", "start_minutely_15": first.strftime("%Y-%m-%dT%H:%M"),
-                      "end_minutely_15": last.strftime("%Y-%m-%dT%H:%M")}
-            data = request_json("https://api.open-meteo.com/v1/forecast?" + urlencode(params), "Open-Meteo")
-            return data if isinstance(data, list) else [data]
+        if missing_locations:
+            names = {"temperatureC": "temperature_2m", "precipitationMm": "precipitation", "visibilityM": "visibility",
+                     "windKph": "wind_speed_10m", "gustKph": "wind_gusts_10m", "windDirectionDeg": "wind_direction_10m"}
 
-        # Keep URL lengths well under web server/reverse-proxy URI limits (HTTP 414).
-        chunk_size = 50
-        chunks = [locations[i:i + chunk_size] for i in range(0, len(locations), chunk_size)]
-        if len(chunks) == 1:
-            responses = fetch_chunk(chunks[0])
-        else:
-            with ThreadPoolExecutor(max_workers=min(len(chunks), 8)) as pool:
-                responses = [item for sublist in pool.map(fetch_chunk, chunks) for item in sublist]
+            query_end = max(last, first + timedelta(hours=12))
 
-        if len(responses) != len(locations):
-            raise ProviderError("Open-Meteo returned a different number of forecast locations than requested.")
-        by_location = {}
-        for location, item in zip(locations, responses):
-            block = item.get("minutely_15", {}) if isinstance(item, dict) else {}
-            times = block.get("time", [])
-            if not times or any(not isinstance(t, (float, int)) for t in times) or any(b - a != 900 for a, b in zip(times, times[1:])):
-                raise ProviderError("Open-Meteo did not return a regular 15-minute time series.")
-            values = {field: block.get(name) or block.get(f"{name}_{model}") or [] for field, name in names.items()}
-            by_location[location] = {"times": times, "values": values, "intervalSeconds": 900,
-                                     "gridCoordinates": [item.get("longitude"), item.get("latitude")]}
+            def fetch_chunk(chunk):
+                params = {"latitude": ",".join(str(round(p[1], 4)) for p in chunk),
+                          "longitude": ",".join(str(round(p[0], 4)) for p in chunk),
+                          "minutely_15": ",".join(names.values()), "models": model, "timezone": "GMT",
+                          "timeformat": "unixtime", "temperature_unit": "celsius", "wind_speed_unit": "kmh",
+                          "precipitation_unit": "mm", "start_minutely_15": first.strftime("%Y-%m-%dT%H:%M"),
+                          "end_minutely_15": query_end.strftime("%Y-%m-%dT%H:%M")}
+                data = request_json("https://api.open-meteo.com/v1/forecast?" + urlencode(params), "Open-Meteo")
+                return data if isinstance(data, list) else [data]
+
+            chunk_size = 50
+            chunks = [missing_locations[i:i + chunk_size] for i in range(0, len(missing_locations), chunk_size)]
+            if len(chunks) == 1:
+                responses = fetch_chunk(chunks[0])
+            else:
+                with ThreadPoolExecutor(max_workers=min(len(chunks), 4)) as pool:
+                    responses = [item for sublist in pool.map(fetch_chunk, chunks) for item in sublist]
+
+            if len(responses) != len(missing_locations):
+                raise ProviderError("Open-Meteo returned a different number of forecast locations than requested.")
+
+            for location, item in zip(missing_locations, responses):
+                block = item.get("minutely_15", {}) if isinstance(item, dict) else {}
+                times = block.get("time", [])
+                if not times or any(not isinstance(t, (float, int)) for t in times) or any(b - a != 900 for a, b in zip(times, times[1:])):
+                    raise ProviderError("Open-Meteo did not return a regular 15-minute time series.")
+                values = {field: block.get(name) or block.get(f"{name}_{model}") or [] for field, name in names.items()}
+                series = {"times": times, "values": values, "intervalSeconds": 900,
+                          "gridCoordinates": [item.get("longitude"), item.get("latitude")]}
+                cached_by_loc[location] = series
+                weather_cache.set_location((location, model), series)
+
+        by_location = {loc: cached_by_loc[loc] for loc in locations}
         fetched = iso(datetime.now(UTC))
         all_times = [stamp for series in by_location.values() for stamp in series["times"]]
         source = {"provider": "Open-Meteo", "model": model_label, "retrievedAt": fetched,

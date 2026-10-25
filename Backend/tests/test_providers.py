@@ -57,6 +57,24 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual([f["gridCoordinates"][0] for f in forecasts["long-route"]],
                          [round(c["coordinates"][0], 4) for c in checkpoints])
 
+    def test_location_caching_skips_api_calls_on_window_adjustments(self):
+        # 12-hour response
+        fields = {"temperature_2m": [12] * 49, "precipitation": [0] * 49, "visibility": [10000] * 49,
+                  "wind_speed_10m": [10] * 49, "wind_gusts_10m": [20] * 49, "wind_direction_10m": [90] * 49}
+        stamps = [(START + timedelta(minutes=15 * i)).timestamp() for i in range(49)]
+        resp = {"longitude": -83, "latitude": 40, "minutely_15": {"time": stamps, **fields}}
+
+        routes = [{"id": "one", "durationSeconds": 900, "checkpoints": [{"coordinates": [-83, 40]}]}]
+        with patch("providers.weather_cache", BoundedCache()), patch("providers.request_json", return_value=resp) as get:
+            # First call for initial window
+            fetch_forecasts(routes, START, START + timedelta(hours=1))
+            self.assertEqual(get.call_count, 1)
+
+            # User adjusts departure slider forward by 2 hours (different cache key in whole-trip cache)
+            fetch_forecasts(routes, START + timedelta(hours=2), START + timedelta(hours=3))
+            # Location cache serves the data without an extra network call
+            self.assertEqual(get.call_count, 1)
+
     def test_missing_provider_field_is_unknown(self):
         response = weather_response()
         del response["minutely_15"]["visibility"]
@@ -93,6 +111,21 @@ class ProviderTests(unittest.TestCase):
                 request_json(secret_url, "Mapbox")
             self.assertEqual(result.exception.status, status)
             self.assertNotIn("secret-token", str(result.exception))
+
+    def test_open_meteo_429_retries_and_succeeds(self):
+        url = "https://api.open-meteo.com/v1/forecast?test=1"
+        error_429 = HTTPError(url, 429, "Too Many Requests", {"Retry-After": "0.01"}, None)
+
+        from unittest.mock import MagicMock
+        success_resp = MagicMock()
+        success_resp.read.return_value = b'{"status": "ok"}'
+        success_resp.__enter__.return_value = success_resp
+
+        with patch("providers.urlopen", side_effect=[error_429, success_resp]), patch("providers.sleep") as mock_sleep:
+            data = request_json(url, "Open-Meteo")
+
+        self.assertEqual(data, {"status": "ok"})
+        mock_sleep.assert_called_once_with(0.01)
 
     def test_expired_cache_loads_again(self):
         cache = BoundedCache(ttl=10)
