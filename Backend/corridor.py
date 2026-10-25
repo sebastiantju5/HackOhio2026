@@ -102,6 +102,11 @@ def sample_route(route, interval_seconds=900):
     for i, duration in enumerate(durations):
         cumulative.append(cumulative[-1] + duration)
         distances.append(distances[-1] + distance(coords[i], coords[i + 1]))
+    if distances[-1] <= 0:
+        raise TripError("Routing provider returned a route without distance.")
+    # Google geometry is compacted for transport; keep provider road mileage.
+    scale = route["distanceMeters"] / distances[-1]
+    distances = [value * scale for value in distances]
     total = cumulative[-1]
     offsets = list(range(0, int(total), interval_seconds)) + [total]
     checkpoints = []

@@ -11,3 +11,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     account_id BIGINT NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS account_vehicles (
+    account_id BIGINT PRIMARY KEY REFERENCES accounts (id) ON DELETE CASCADE,
+    profile JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

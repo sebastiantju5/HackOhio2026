@@ -4,7 +4,8 @@ import DepartureScrubber from './DepartureScrubber.jsx'
 import CheckpointPanel from './CheckpointPanel.jsx'
 import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
 import PlaceField from './PlaceField.jsx'
-import { geocodeAddress, mapsKey } from './googleMaps.js'
+import { geocodeAddress, getGoogleRoutes, mapsKey } from './googleMaps.js'
+import StopPlanner from './StopPlanner.jsx'
 import './TripPlanner.css'
 
 const PLACES = [
@@ -40,11 +41,13 @@ async function getAnalysis(form, signal) {
   if (!form.originPlace?.coordinates || !form.destinationPlace?.coordinates) {
     throw new Error('Choose a starting point and a destination.')
   }
+  const googleRoutes = form.mode === 'live' && mapsKey() ? await getGoogleRoutes(form) : undefined
+  if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
   const response = await fetch('/api/trips/analyze', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
     body: JSON.stringify({ origin: form.originPlace, destination: form.destinationPlace,
       departureStart: fromWallInput(form.start), departureEnd: fromWallInput(form.end), timeZone: TIME_ZONE,
-      includeAlternatives: form.alternatives, dataMode: form.mode }),
+      includeAlternatives: form.alternatives, dataMode: form.mode, googleRoutes }),
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || 'The planner is unavailable. Check that the Flask backend is running on port 5001.')
@@ -56,7 +59,8 @@ function Metric({ label, children }) {
   return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
 }
 
-export default function TripPlanner({ session, onAccount, onLogout }) {
+export default function TripPlanner({ session, onAccount, onLogout, vehicle, vehicleError, vehicleReady }) {
+  const [stopPlan, setStopPlan] = useState(null)
   const [form, setForm] = useState(defaults)
   const [analysis, setAnalysis] = useState(null)
   const [routeId, setRouteId] = useState(null)
@@ -68,6 +72,7 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
   const [routingProvider, setRoutingProvider] = useState('OSRM')
   const request = useRef(null)
   const initialForm = useRef(form)
+  const mapRegion = useRef(null)
 
   function accept(data) {
     setAnalysis(data)
@@ -80,7 +85,7 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
   useEffect(() => {
     const controller = new AbortController()
     request.current = controller
-    fetch('/api/trips/config', { signal: controller.signal }).then(response => response.json()).then(data => setRoutingProvider(data.routingProvider || 'OSRM')).catch(() => {})
+    fetch('/api/trips/config', { signal: controller.signal }).then(response => response.json()).then(data => setRoutingProvider(mapsKey() ? 'Google Routes' : data.routingProvider || 'OSRM')).catch(() => {})
     getAnalysis(initialForm.current, controller.signal).then(accept).catch(err => {
       if (err.name !== 'AbortError') setError(err instanceof TypeError ? 'Cannot reach the planner. Start the Flask backend on port 5001, then try again.' : err.message)
     }).finally(() => { if (!controller.signal.aborted) setBusy(false) })
@@ -147,6 +152,9 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
   const route = analysis?.routes.find(item => item.id === routeId)
   const candidates = analysis?.candidates.filter(item => item.routeId === routeId) || []
   const candidate = candidates[departureIndex] || candidates[0]
+  const activePlan = stopPlan?.candidateId === candidate?.id && stopPlan?.analysisId === analysis?.analysisId ? stopPlan : null
+  const displayCandidate = activePlan ? { ...candidate, arrival: activePlan.arrival, higherMinutes: activePlan.higherMinutes,
+    checkpoints: activePlan.checkpointConditions, segmentLevels: activePlan.segmentLevels } : candidate
   const pointIndex = Math.min(selectedPoint, (route?.checkpoints.length || 1) - 1)
   const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
   const source = analysis?.sources.find(item => item.model)
@@ -238,7 +246,7 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
               <PlaceField hint="From" value={form.origin} disabled={busy} onText={text => editPlace('origin', text)} onPlace={place => choosePlace('origin', place)} />
               <span className="capsule-divider" aria-hidden="true">→</span>
               <PlaceField hint="To" value={form.destination} disabled={busy} onText={text => editPlace('destination', text)} onPlace={place => choosePlace('destination', place)} />
-            </> : <p className="place-key-note">Add VITE_GOOGLE_MAPS_API_KEY to Frontend/.env, enable Maps JavaScript, Places, Geocoding, and Directions, then restart the site.</p>}
+            </> : <p className="place-key-note">Add VITE_GOOGLE_MAPS_API_KEY to Frontend/.env, enable Maps JavaScript, Places, Geocoding, and Routes API, then restart the site.</p>}
           </div>
 
           <div className="capsule-times">
@@ -307,9 +315,9 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
           )}
 
           {/* Map & Checkpoint Split */}
-          <div className="bone-split-layout">
-            <RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
-            <CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={candidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} />
+          <div className="bone-split-layout" ref={mapRegion}>
+            <RouteMap route={route} candidate={displayCandidate} stops={activePlan?.stops} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
+            <CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={displayCandidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} />
           </div>
 
           {/* Metrics & Scrubber Details */}
@@ -317,9 +325,9 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
             <>
               <div className="bone-trip-metrics">
                 <Metric label="On the road">{duration(route.durationSeconds)}</Metric>
-                <Metric label="Estimated arrival">{clock(candidate.arrival, analysis.timeZone)} <small>{day(candidate.arrival, analysis.timeZone)}</small></Metric>
-                <Metric label="Higher exposure">{Math.round(candidate.higherMinutes)} <small>min</small></Metric>
-                <Metric label="Forecast coverage">{candidate.complete ? 'Complete' : `${Math.round(candidate.unknownMinutes)} min unknown`}</Metric>
+                <Metric label={activePlan ? 'Arrival with breaks · before detours' : 'Estimated arrival'}>{clock(displayCandidate.arrival, analysis.timeZone)} <small>{day(displayCandidate.arrival, analysis.timeZone)}</small></Metric>
+                <Metric label="Higher exposure">{Math.round(displayCandidate.higherMinutes)} <small>min</small></Metric>
+                <Metric label="Forecast coverage">{activePlan ? (activePlan.complete ? 'Complete with breaks' : 'Partial with breaks') : candidate.complete ? 'Complete' : `${Math.round(candidate.unknownMinutes)} min unknown`}</Metric>
               </div>
 
               <div className="bone-scrubber-section">
@@ -351,10 +359,10 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
                   <summary>All {route?.checkpoints.length || 0} checkpoints <span>15-minute travel intervals + destination</span></summary>
                   <div className="checkpoint-buttons-grid">
                     {route?.checkpoints.map((point, index) => (
-                      <button type="button" key={point.id} className={candidate.checkpoints[index]?.level} aria-pressed={pointIndex === index} onClick={() => setSelectedPoint(index)}>
+                      <button type="button" key={point.id} className={displayCandidate.checkpoints[index]?.level} aria-pressed={pointIndex === index} onClick={() => setSelectedPoint(index)}>
                         <span>{String(index + 1).padStart(2, '0')}</span>
-                        <strong>{clock(candidate.checkpoints[index]?.arrival, analysis.timeZone)}</strong>
-                        <small>Mile {miles(point.distanceMeters)} · {LEVELS[candidate.checkpoints[index]?.level]?.label}</small>
+                        <strong>{clock(displayCandidate.checkpoints[index]?.arrival, analysis.timeZone)}</strong>
+                        <small>Mile {miles(point.distanceMeters)} · {LEVELS[displayCandidate.checkpoints[index]?.level]?.label}</small>
                       </button>
                     ))}
                   </div>
@@ -367,9 +375,10 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
                   <ul>{analysis.limitations?.map(item => <li key={item}>{item}</li>)}</ul>
                   <p>Demonstration thresholds: rain caution ≥1 mm/h, higher ≥7.5 mm/h; projected crosswind gust caution ≥25 km/h, higher ≥45 km/h; visibility caution below 3 km, higher below 1 km. Wet conditions with air temperature ≤2°C trigger possible freezing conditions. Unknown data cannot earn a clear label. Scoring: {analysis.scoringVersion}.</p>
                   <p>{analysis.sources?.filter(item => item.trafficNote).map(item => item.trafficNote).join(' ')}</p>
-                  <p><a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noreferrer">Open-Meteo / NOAA HRRR</a> · <a href="https://project-osrm.org/" target="_blank" rel="noreferrer">OSRM Demo Routing</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></p>
+                  <p><a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noreferrer">Open-Meteo / NOAA forecasts</a> · {route.provider === 'Google Routes' ? <a href="https://developers.google.com/maps/documentation/javascript/routes/get-a-route" target="_blank" rel="noreferrer">Google Routes</a> : <a href="https://project-osrm.org/" target="_blank" rel="noreferrer">OSRM / illustrative routing</a>} · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></p>
                 </details>
               </div>
+              <StopPlanner analysis={analysis} candidate={candidate} vehicle={vehicle} vehicleReady={vehicleReady} vehicleError={vehicleError} session={session} onAccount={onAccount} onApply={setStopPlan} applied={!!activePlan} onSelect={index => { setSelectedPoint(index); mapRegion.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} />
             </>
           )}
 

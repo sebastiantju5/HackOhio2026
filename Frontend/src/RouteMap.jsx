@@ -6,7 +6,7 @@ import { loadGoogleMaps, mapsKey } from './googleMaps.js'
 
 const latLng = coordinates => [coordinates[1], coordinates[0]]
 
-function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace }) {
+function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace, stops }) {
   const container = useRef(null)
   const map = useRef(null)
   const drawn = useRef([])
@@ -78,6 +78,16 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
       marker.addListener('click', () => onSelect(index))
       drawn.current.push(marker)
     })
+    stops?.forEach((stop, index) => {
+      const marker = new google.maps.Marker({
+        map: map.current, position: { lat: stop.coordinates[1], lng: stop.coordinates[0] },
+        label: { text: `S${index + 1}`, color: '#fff', fontSize: '11px' }, title: `Break ${index + 1}: ${stop.durationMinutes} minutes`,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 17, fillColor: '#6f281a', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+        zIndex: 100,
+      })
+      marker.addListener('click', () => onSelect(stop.checkpointIndex))
+      drawn.current.push(marker)
+    })
     const selected = route.checkpoints[selectedPoint]
     if (selected) {
       drawn.current.push(new google.maps.Circle({
@@ -91,35 +101,7 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
       }))
     }
     if (!bounds.isEmpty()) map.current.fitBounds(bounds, 55)
-  }, [mapReady, route, candidate, selectedPoint, onSelect, origin, destination])
-
-  useEffect(() => {
-    const google = window.google
-    if (!mapReady || !map.current || !google?.maps || route) return undefined
-    if (!originPlace?.coordinates || !destinationPlace?.coordinates) return undefined
-    let cancelled = false
-    new google.maps.DirectionsService().route({
-      origin: { lng: originPlace.coordinates[0], lat: originPlace.coordinates[1] },
-      destination: { lng: destinationPlace.coordinates[0], lat: destinationPlace.coordinates[1] },
-      travelMode: google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-      if (cancelled || status !== 'OK' || !result?.routes?.[0]) return
-      clearDrawn()
-      const path = result.routes[0].overview_path
-      drawn.current.push(new google.maps.Polyline({
-        path,
-        map: map.current,
-        strokeColor: '#254d3a',
-        strokeWeight: 5,
-      }))
-      const bounds = new google.maps.LatLngBounds()
-      path.forEach((point) => bounds.extend(point))
-      map.current.fitBounds(bounds, 55)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [mapReady, route, originPlace, destinationPlace])
+  }, [mapReady, route, candidate, selectedPoint, onSelect, origin, destination, stops])
 
   return <div className="map-wrap">
     <div ref={container} className="route-map" role="region" aria-label="Google map of the route. Select numbered checkpoints, or use the checkpoint list below." />
@@ -129,7 +111,7 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
   </div>
 }
 
-function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination }) {
+function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, stops }) {
   const container = useRef(null)
   const map = useRef(null)
   const layers = useRef(null)
@@ -177,7 +159,12 @@ function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, de
         marker.bindTooltip(label, { permanent: true, direction: index === 0 ? 'left' : 'right', className: 'city-label', offset: [10, 0] })
       }
     })
-  }, [route, candidate, onSelect, origin, destination])
+    stops?.forEach((stop, index) => {
+      L.marker(latLng(stop.coordinates), { icon: L.divIcon({ className: 'stop-map-marker', html: `S${index + 1}`, iconSize: [30, 30], iconAnchor: [15, 15] }),
+        title: `Break ${index + 1}: ${stop.durationMinutes} minutes`, zIndexOffset: 1000,
+      }).addTo(layers.current).on('click', () => onSelect(stop.checkpointIndex))
+    })
+  }, [route, candidate, onSelect, origin, destination, stops])
 
   useEffect(() => {
     if (!highlight.current) return

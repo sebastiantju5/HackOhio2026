@@ -71,6 +71,22 @@ The trip planner connects directly to the authentication portal:
   - **Password**: `neighborhood`
 - Or create a new account via the **Create Account** tab.
 - Once signed in, your user badge (`AR Alex`) appears in the capsule navbar with quick sign-out and profile viewing.
+- Open your profile to add one car: make, model, year, highway MPG and tank size in **US gallons**. **Look up EPA mileage** finds engine/transmission configurations from FuelEconomy.gov; select the matching configuration for its highway MPG. If no rating is available, enter your own MPG estimate. Tank size is entered from your owner's manual; it is not inferred from the EPA rating. Gasoline and diesel vehicles are supported; EV/alternative-fuel MPGe is not treated as gas mileage.
+- Vehicle profiles persist in PostgreSQL, scoped to the signed-in account. The new `account_vehicles` table is created idempotently on backend startup. For an existing Compose volume, restart the backend or run `uv run python Backend/app.py --init-db`; **do not remove the database volume**.
+
+## Fuel, Food & Weather Breaks
+
+After choosing a route and departure with the scrubber, use **Plan my stops**. Set the starting tank level and whether to include a food break. Without a saved car, weather and food planning still works.
+
+The planner searches checkpoint locations and 15/30/45/60-minute waits, up to three stops and 90 minutes total. A weather wait starts before an upcoming higher-exposure segment, at a checkpoint whose arrival exposure is lower or caution. The optimizer shifts every later arrival, rechecks the forecast, and ranks complete coverage, peak exposure, higher-exposure minutes, weighted exposure, meal preference, then delay. Fuel stops must be reachable while retaining a 15% tank reserve. Fuel estimates use 85% of highway MPG to allow a planning margin; this is a heuristic, not a weather-dependent mileage model.
+
+**Preview breaks on map** shows stop markers, adjusted route colors, checkpoint arrivals and total arrival time. Only a complete forecast comparison can claim a weather improvement. If waiting does not improve exposure, the result says so; fuel/meal stops can still be included. If checkpoint spacing cannot support the fuel range, the planner reports that instead of inventing a reachable station.
+
+For live trips, **Find nearby gas/food** retrieves up to three Google Places within 1.5 km of a proposed stop area. Enable **Places API (New)** alongside the existing Maps JavaScript, Places, Geocoding and Routes API services for `VITE_GOOGLE_MAPS_API_KEY` in `Frontend/.env`. Requests happen only when the traveler clicks to find venues. API failures and empty results offer a Google Maps search link; they do not fabricate businesses. The simulation labels all stop areas as illustrative and does not fetch real venues.
+
+These are corridor recommendations: opening hours, indoor shelter, diesel availability and road access must be checked. Venue detours, stationary exposure, idling fuel, and weather-induced traffic slowdowns are not included in ETA/fuel estimates. Picking a venue does not yet recalculate a waypoint itinerary.
+
+Analysis snapshots expire after 15 minutes or a server restart (bounded in-memory storage); click **Find Window** to refresh an expired analysis. Changing departure, route, vehicle, starting fuel or food preference clears the previous stop plan.
 
 ---
 
@@ -88,7 +104,7 @@ The trip planner connects directly to the authentication portal:
 ## Data Modes
 
 - **Simulated scenario**: Starts automatically. Its authored Columbus–Cleveland corridors and moving rain band require no external weather/routing services. Route overlays remain fully interactive offline.
-- **Live forecast**: Uses public OSRM demo routing by default (no live traffic), plus Open-Meteo's HRRR model (`gfs_hrrr`) with 15-minute weather series.
+- **Live forecast**: The browser uses Google Routes when its Maps key is configured, sends compact route geometry and cumulative step timing to Flask, and matches Open-Meteo weather to those same route checkpoints. Traffic-aware leg durations scale the per-step times. Geometry is capped at 140 vertices per route to retain the existing 16 KB API request limit; positions and within-step timing are approximate. HRRR (`gfs_hrrr`) is used inside its US coverage, GFS elsewhere. Forecasts cover up to 90 minutes of additional stops. Backend-only clients without Google route data retain OSRM (or configured Mapbox) routing.
 - **Optional Mapbox routing**: Create `Backend/.env` based on `Backend/.env.example` and set `MAPBOX_ACCESS_TOKEN` for traffic-aware baseline routing.
 
 ---
@@ -98,7 +114,7 @@ The trip planner connects directly to the authentication portal:
 Run all unit tests and verify the production build:
 
 ```bash
-# Backend unit tests (27 tests)
+# Backend unit tests (vehicle ownership/validation, routing, forecasts, stop timing & fuel)
 uv run python -m unittest discover -s Backend/tests -v
 
 # Frontend unit tests & production bundle

@@ -1,0 +1,43 @@
+.stop-planner { border-top: 1px solid var(--border); padding: 32px; background: #f0ede4; color: var(--ink); }
+.stop-intro, .stop-summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.stop-kicker { font: 10px var(--font-mono); letter-spacing: 1.4px; color: var(--terracotta); }
+.stop-intro h3 { font: 400 36px var(--font-serif); margin: 10px 0; }
+.stop-planner p { font-size: 13px; line-height: 1.7; color: var(--ink-dim); }
+.stop-text-button { border: 0; background: transparent; color: var(--terracotta); font: 600 12px var(--font-sans); white-space: nowrap; cursor: pointer; }
+.stop-controls { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin: 24px 0 8px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--paper); }
+.stop-vehicle { display: flex; flex-direction: column; gap: 8px; flex: 1 1 200px; }
+.stop-vehicle strong { font-size: 14px; }
+.stop-vehicle span { font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
+.stop-fuel-label { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 12px; min-width: 150px; }
+.stop-fuel-label input { grid-column: 1 / -1; width: 100%; accent-color: var(--terracotta); }
+.stop-food-check { font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.stop-food-check input { accent-color: var(--terracotta); }
+.stop-primary { border: 1px solid var(--terracotta); border-radius: 8px; background: var(--terracotta); color: white; padding: 12px 16px; font: 600 12px var(--font-sans); cursor: pointer; }
+.stop-primary:disabled { opacity: .5; cursor: wait; }
+.stop-results { padding-top: 24px; }
+.stop-summary strong { font: 400 24px var(--font-serif); }
+.stop-summary p { margin-bottom: 0; }
+.stop-metrics { display: flex; gap: 30px; flex-wrap: wrap; margin: 24px 0; }
+.stop-metrics > div { display: flex; flex-direction: column; gap: 8px; }
+.stop-metrics span { font-size: 11px; color: var(--ink-dim); }
+.stop-metrics strong { font: 500 17px var(--font-mono); }
+.stop-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; margin-top: 16px; padding: 22px; }
+.stop-card-heading { display: flex; gap: 12px; align-items: center; }
+.stop-card-heading h4 { margin: 0 0 6px; font-size: 15px; }
+.stop-card-heading span { font-size: 11px; color: var(--ink-dim); }
+.stop-card-heading .stop-order { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--terracotta); color: white; flex-shrink: 0; }
+.stop-card-heading button { margin-left: auto; background: transparent; border: 0; color: var(--terracotta); font-size: 11px; cursor: pointer; }
+.stop-times { display: flex; align-items: center; gap: 18px; margin-top: 20px; font-size: 12px; }
+.stop-times strong { font-family: var(--font-mono); }
+.stop-planner .stop-fineprint { font-size: 11px; }
+.stop-place-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 12px; }
+.stop-place-actions button { background: white; color: var(--terracotta); border: 1px solid var(--border-dark); border-radius: 6px; padding: 9px 12px; font: inherit; cursor: pointer; }
+.stop-venues { display: grid; gap: 8px; margin-top: 20px; }
+.stop-venues small { color: var(--ink-dim); font-size: 10px; }
+.stop-venues a { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--border); text-decoration: none; font-size: 12px; }
+.stop-venues span { color: var(--ink-dim); font-size: 11px; }
+.stop-assumptions { font-size: 12px; line-height: 1.7; margin-top: 22px; }
+.stop-assumptions summary { cursor: pointer; }
+.stop-planner .stop-error { color: #a32424; }
+.stop-map-marker { display: grid; place-items: center; border-radius: 7px; width: 30px; height: 30px; background: var(--terracotta); border: 2px solid white; color: white; font-weight: 700; box-shadow: 0 2px 8px #0003; }
+@media (max-width: 720px) { .stop-planner { padding: 24px 18px; } .stop-intro, .stop-summary { flex-direction: column; align-items: flex-start; gap: 10px; } .stop-controls { gap: 20px; padding: 16px; } .stop-intro h3 { font-size: 30px; } .stop-card { padding: 16px; } .stop-card-heading { flex-wrap: wrap; } .stop-metrics { gap: 20px; } }
