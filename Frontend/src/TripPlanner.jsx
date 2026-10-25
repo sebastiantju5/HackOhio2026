@@ -18,12 +18,12 @@ const PLACES = [
 ]
 
 function windowLabel(minutes) {
-  if (!minutes) return 'Exact time'
+  if (!minutes) return 'Exact'
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
   if (hours && rest) return `${hours}h ${rest}m`
-  if (hours === 1) return '1 hour'
-  if (hours) return `${hours} hours`
+  if (hours === 1) return '1 hr'
+  if (hours) return `${hours} hrs`
   return `${minutes} min`
 }
 
@@ -39,10 +39,8 @@ function describeWindow(leave, minutes) {
   try {
     const range = departureRange(leave, minutes)
     if (!minutes) return `Exact · ${clock(range.start)}`
-    const span = day(range.start) === day(range.end)
-      ? `${clock(range.start)}–${clock(range.end)}`
-      : `${day(range.start)} ${clock(range.start)} – ${day(range.end)} ${clock(range.end)}`
-    return `${windowLabel(minutes)} · ${span}`
+    const nextDay = day(range.start) !== day(range.end) ? ' (+1d)' : ''
+    return `±${windowLabel(minutes)} · ${clock(range.start)}–${clock(range.end)}${nextDay}`
   } catch {
     return windowLabel(minutes)
   }

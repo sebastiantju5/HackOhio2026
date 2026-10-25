@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { isGoogleMapsAuthFailed, loadGoogleMaps, searchPlaceSuggestions } from './googleMaps.js'
+import { searchPlaceSuggestions } from './googleMaps.js'
 
 export default function PlaceField({ hint, value, disabled, onText, onPlace }) {
   const input = useRef(null)
-  const widget = useRef(null)
   const [suggestions, setSuggestions] = useState([])
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(-1)
@@ -23,38 +22,6 @@ export default function PlaceField({ hint, value, disabled, onText, onPlace }) {
       input.current.value = value
     }
   }, [value])
-
-  // Try Google Maps Autocomplete if key is available and working
-  useEffect(() => {
-    if (disabled || isGoogleMapsAuthFailed()) return undefined
-    let cancelled = false
-    loadGoogleMaps().then((google) => {
-      if (cancelled || !input.current || widget.current || isGoogleMapsAuthFailed()) return
-      try {
-        const autocomplete = new google.maps.places.Autocomplete(input.current, {
-          fields: ['formatted_address', 'geometry', 'name'],
-          types: ['geocode'],
-        })
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace()
-          const location = place.geometry?.location
-          if (!location) return
-          const name = (place.formatted_address || place.name || '').slice(0, 180)
-          if (input.current) input.current.value = name
-          setOpen(false)
-          onTextRef.current(name)
-          onPlaceRef.current({ name, coordinates: [location.lng(), location.lat()] })
-        })
-        widget.current = autocomplete
-      } catch {
-        // Legacy autocomplete disabled; fallback suggestions handle search
-      }
-    }).catch(() => {})
-
-    return () => {
-      cancelled = true
-    }
-  }, [disabled])
 
   // Close suggestions when clicking outside
   useEffect(() => {
