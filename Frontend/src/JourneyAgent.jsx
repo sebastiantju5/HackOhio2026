@@ -601,6 +601,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
                           )}
                           <button
                             type="button"
+                            className="journey-show-stops"
                             onClick={() => onApply(appliedPlan?.journeyPlanId === plan.journeyPlanId ? null : plan)}
                           >
                             {appliedPlan?.journeyPlanId === plan.journeyPlanId ? 'Hide stops on map' : 'Show stops on map ↑'}

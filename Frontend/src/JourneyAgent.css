@@ -144,6 +144,8 @@
 }
 .journey-agent .journey-restaurants button[aria-pressed=true] { border-color: #245c8b; background: #eef5fb; }
 .journey-restaurants button span, .journey-restaurants small { font-weight: 400; color: var(--ink-dim); font-size: 12px; line-height: 1.5; }
+.journey-restaurants small { margin-top: 4px; }
+.journey-computed-plan .journey-show-stops { margin-top: 16px; }
 .journey-agent .journey-error { color: #a32424; }
 
 @media (max-width: 640px) { .journey-preferences { grid-template-columns: 1fr; } }

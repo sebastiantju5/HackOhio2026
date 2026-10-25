@@ -23,8 +23,11 @@ cp Frontend/.env.template Frontend/.env
 
 Key environment settings:
 - **`DATABASE_URL`**: PostgreSQL connection string (defaults to `postgresql://weatherway:weatherway@localhost:5433/weatherway`).
-- **`OPENROUTER_API_KEY`**: Server-only API key for the Journey Agent LLM.
-- **`OPENROUTER_MODEL`**: Set to `openrouter/free` for zero-cost routing across available free models, or choose a model such as `openai/gpt-4.1-mini`.
+- **`USE_LOCAL_LLM`**: Set to `true` to send Journey Agent requests to a local OpenAI-compatible server instead of OpenRouter.
+- **`LOCAL_LLM_BASE_URL`**: Base URL for that server. The fast 8k-context endpoint is `http://192.168.1.142:11434/v1`. A 32k-context alternative is `http://192.168.1.211:11434/v1`.
+- **`LOCAL_LLM_MODEL`**: Model id served at that endpoint. The local server uses `/models/Ling-3.0-tiny-Q5_K_M.gguf`.
+- **`OPENROUTER_API_KEY`**: Server-only API key, used only when `USE_LOCAL_LLM` is `false`. Never expose it as a frontend `VITE_` variable.
+- **`OPENROUTER_MODEL`**: OpenRouter model when local mode is off. `openrouter/free` routes across free models; `openai/gpt-4.1-mini` is another option.
 - **`VITE_GOOGLE_MAPS_API_KEY`**: Browser key for Google Maps JavaScript API, Places API (New), Geocoding, and Routes API. (Gracefully falls back to Leaflet & Nominatim when omitted).
 
 ### 2. Start the PostgreSQL Database (Docker Compose)
@@ -125,18 +128,21 @@ Google routing uses the earliest departure in the comparison window. If it is un
 
 ---
 
-## Journey Agent & RAG (OpenRouter)
+## Journey Agent & RAG
 
-The **Ask the road ahead** panel runs a journey agent through OpenRouter. Sign in, analyze a trip, select a departure, set the starting tank and maximum break time, then ask a question or click **Plan stops & show on map**. Either action makes a model request.
+The **Ask the road ahead** panel runs a journey agent on a local OpenAI-compatible model. Sign in, analyze a trip, select a departure, set the starting tank and maximum break time, then ask a question or click **Plan stops & show on map**. Either action makes a model request.
 
 Set these server-only variables in the ignored `Backend/.env`, then restart with `uv run python Backend/app.py`:
 
 ```dotenv
-OPENROUTER_API_KEY=your-key-here
-OPENROUTER_MODEL=openai/gpt-4.1-mini
+USE_LOCAL_LLM=true
+LOCAL_LLM_BASE_URL=http://192.168.1.142:11434/v1
+LOCAL_LLM_MODEL=/models/Ling-3.0-tiny-Q5_K_M.gguf
 ```
 
-The default model supports tool calling and JSON-schema responses. A compatible OpenRouter model such as `openai/gpt-4o` can be selected through `OPENROUTER_MODEL`. Provider routing requires parameter support and sets `data_collection=deny`. OpenRouter/model-provider processing and API usage still apply. The key is never returned by the app or placed in a frontend `VITE_` variable.
+`LOCAL_LLM_BASE_URL` is the fast 8k-context server at `192.168.1.142:11434`. For a longer context window, point it at `http://192.168.1.211:11434/v1` instead. The model id must match a file that server is serving.
+
+Set `USE_LOCAL_LLM=false` to use OpenRouter instead. That path needs `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` (for example `openrouter/free` or `openai/gpt-4.1-mini`). OpenRouter routing requires parameter support and sets `data_collection=deny`. The key is never returned by the app or placed in a frontend `VITE_` variable.
 
 The workflow retrieves relevant passages with **BM25**, combines them with the server's selected forecast snapshot and authenticated vehicle fuel specs, runs bounded tool calls, and returns a structured answer with source IDs and an optional computed stop plan. This initial RAG uses lexical retrieval, not embeddings or a vector database. Its versioned corpus is `Backend/knowledge/travel-guidance.json`: WeatherWay methodology and curated, paraphrased NWS/FuelEconomy.gov guidance. Edit that file and restart the backend to update the corpus. No arbitrary website crawling or document uploads are enabled.
 
