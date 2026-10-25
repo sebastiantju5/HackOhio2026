@@ -10,8 +10,7 @@ Styled in the **Terracotta Immersive Editorial** design system with a centered t
 
 ### 1. Configure Environment Variables
 
-Template files are provided for all components:
-- **Root Template**: [`.env.template`](.env.template)
+Template files are provided inside `Backend` and `Frontend`:
 - **Backend Template**: [`Backend/.env.template`](Backend/.env.template)
 - **Frontend Template**: [`Frontend/.env.template`](Frontend/.env.template)
 
