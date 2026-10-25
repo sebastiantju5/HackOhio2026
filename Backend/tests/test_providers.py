@@ -37,6 +37,26 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(forecasts["one"][0]["gridCoordinates"], [-83, 40])
         self.assertEqual(forecasts, again)
 
+    def test_weather_chunks_large_route_into_multiple_requests(self):
+        # 120 checkpoints to force chunking across multiple 50-location requests
+        checkpoints = [{"coordinates": [-80 - (i * 0.1), 40 + (i * 0.05)]} for i in range(120)]
+        routes = [{"id": "long-route", "durationSeconds": 120 * 900, "checkpoints": checkpoints}]
+        calls = []
+
+        def mock_request(url, provider):
+            query = parse_qs(urlparse(url).query)
+            coords = query["longitude"][0].split(",")
+            calls.append(len(coords))
+            return [weather_response(float(c)) for c in coords]
+
+        with patch("providers.weather_cache", BoundedCache()), patch("providers.request_json", side_effect=mock_request):
+            forecasts, source = fetch_forecasts(routes, START, START + timedelta(hours=1))
+
+        self.assertEqual(sorted(calls), [20, 50, 50])
+        self.assertEqual(len(forecasts["long-route"]), 120)
+        self.assertEqual([f["gridCoordinates"][0] for f in forecasts["long-route"]],
+                         [round(c["coordinates"][0], 4) for c in checkpoints])
+
     def test_missing_provider_field_is_unknown(self):
         response = weather_response()
         del response["minutely_15"]["visibility"]
