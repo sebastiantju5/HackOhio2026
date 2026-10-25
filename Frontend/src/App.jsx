@@ -58,7 +58,7 @@ export default function App() {
   function handleLogin(nextSession, remember = true) {
     storeSession(nextSession, remember)
     setSession(nextSession)
-    setView('planner')
+    setView('account')
   }
 
   async function handleLogout() {

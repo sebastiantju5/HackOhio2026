@@ -22,10 +22,11 @@ def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=Tru
     departure = parse_time(candidate["departure"])
     points = route["checkpoints"]
     # MPG estimates are discounted 15%; refuel before reaching a 15% tank reserve.
-    mpg = vehicle["mpg"] * MPG_FACTOR if vehicle else None
-    capacity = vehicle["tankGallons"] if vehicle else None
-    initial_range = max(0, starting_fuel - RESERVE) * capacity * mpg if vehicle else float("inf")
-    full_range = (1 - RESERVE) * capacity * mpg if vehicle else float("inf")
+    has_fuel = bool(vehicle) and finite_number(vehicle.get("mpg")) and finite_number(vehicle.get("tankGallons"))
+    mpg = vehicle["mpg"] * MPG_FACTOR if has_fuel else None
+    capacity = vehicle["tankGallons"] if has_fuel else None
+    initial_range = max(0, starting_fuel - RESERVE) * capacity * mpg if has_fuel else float("inf")
+    full_range = (1 - RESERVE) * capacity * mpg if has_fuel else float("inf")
     want_meal = food and route["durationSeconds"] >= 90 * 60
     conditions = {}
 
@@ -65,7 +66,7 @@ def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=Tru
             to_destination = route["distanceMeters"] / MILE - here_mile
             # Refuel only for a genuine range need. Otherwise extra refuels could
             # masquerade as arbitrary weather waits and consume the stop budget.
-            fuel_opportunity = bool(vehicle) and remaining_range < to_destination and (
+            fuel_opportunity = has_fuel and remaining_range < to_destination and (
                 remaining_range < to_next if index == 0 else remaining_range <= max(40, 2 * to_next))
             if len(state["stops"]) < 3:
                 if fuel_opportunity:
@@ -133,7 +134,7 @@ def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=Tru
               "assumptions": ["Stop locations are search areas near route checkpoints. Verify road access, hours and suitable indoor shelter.",
                               "Times exclude venue detours. A selected business is not a verified shelter or a rerouted itinerary.",
                               "Forecasts are evaluated after every stop; stationary exposure and weather slowdowns are not modeled."]}
-    if vehicle:
+    if has_fuel:
         distance_miles = route["distanceMeters"] / MILE
         last = best["refuel"]
         remaining_miles = distance_miles - (points[last]["distanceMeters"] / MILE if last >= 0 else 0)

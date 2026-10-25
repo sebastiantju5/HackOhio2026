@@ -103,7 +103,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
 
   return (
     <main className="auth-page">
-      <div className="shell">
+      <div className={user ? 'shell shell-profile' : 'shell'}>
         <header className="topbar">
           <div className="brand" onClick={onBack} style={{ cursor: 'pointer' }}>
             <span className="brand-symbol" aria-hidden="true">w.</span>
@@ -115,7 +115,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
           <div className="auth-edition">HACKOHIO / 2026</div>
         </header>
 
-        <section className="auth-stage" aria-label="WeatherWay Intelligence">
+        {!user && <section className="auth-stage" aria-label="WeatherWay Intelligence">
           <p className="eyebrow">Corridor Forecasting</p>
           <h1>
             <span>The road ahead,</span>
@@ -141,7 +141,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
               </div>
             </div>
           </div>
-        </section>
+        </section>}
 
         <section className="auth-panel">
           {user ? (
