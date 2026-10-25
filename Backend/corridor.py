@@ -92,7 +92,7 @@ def bearing(a, b):
     return degrees(atan2(sin(dl) * cos(lat2), cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dl))) % 360
 
 
-def sample_route(route, interval_seconds=900):
+def sample_route(route, interval_seconds=None):
     coords, durations = route["geometry"]["coordinates"], route["edgeDurationsSeconds"]
     if len(coords) < 2 or len(durations) != len(coords) - 1:
         raise TripError("Routing provider returned mismatched geometry and edge durations.")
@@ -108,7 +108,17 @@ def sample_route(route, interval_seconds=900):
     scale = route["distanceMeters"] / distances[-1]
     distances = [value * scale for value in distances]
     total = cumulative[-1]
-    offsets = list(range(0, int(total), interval_seconds)) + [total]
+    step = interval_seconds
+    if step is None:
+        # Standard 15-minute sampling for trips up to ~10 hours.
+        # For longer cross-country trips, adaptively scale the interval (in 15-min increments)
+        # to cap checkpoint locations around 40-50, avoiding rate limits while maintaining weather fronts.
+        max_checkpoints = 40
+        if total <= max_checkpoints * 900:
+            step = 900
+        else:
+            step = max(900, int(round(total / (max_checkpoints - 1) / 900.0)) * 900)
+    offsets = list(range(0, int(total), step)) + [total]
     checkpoints = []
     for i, offset in enumerate(offsets):
         edge = 0 if offset == 0 else min(bisect_right(cumulative, offset) - 1, len(durations) - 1)

@@ -57,6 +57,22 @@ class SamplingTests(unittest.TestCase):
         self.assertEqual(sampled["durationSeconds"], 80)
         self.assertEqual(sampled["checkpoints"][0]["coordinates"], [-83, 40])
 
+    def test_adaptive_sampling_caps_long_trips_while_preserving_short_cadence(self):
+        # 4-hour route (14,400s) -> 15 min (900s) step -> 17 checkpoints
+        r4 = {"id": "4h", "distanceMeters": 300000, "geometry": {"coordinates": [[-83, 40], [-80, 40]]},
+              "edgeDurationsSeconds": [14400]}
+        s4 = sample_route(r4)
+        self.assertEqual(len(s4["checkpoints"]), 17)
+        self.assertEqual(s4["checkpoints"][1]["offsetSeconds"], 900)
+
+        # 50-hour cross-country route (180,000s) -> capped at ~41 checkpoints with ~75-90 min step
+        r50 = {"id": "50h", "distanceMeters": 4000000, "geometry": {"coordinates": [[-70, 45], [-118, 34]]},
+               "edgeDurationsSeconds": [180000]}
+        s50 = sample_route(r50)
+        self.assertLessEqual(len(s50["checkpoints"]), 45)
+        self.assertGreaterEqual(len(s50["checkpoints"]), 35)
+        self.assertEqual(s50["checkpoints"][1]["offsetSeconds"], 4500)
+
     def test_bad_annotations_or_excessive_route_rejected(self):
         for durations in ([2], [1, None], [0, 0], [-2, 100]):
             with self.subTest(durations=durations), self.assertRaises(TripError):
