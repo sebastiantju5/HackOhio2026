@@ -1,0 +1,47 @@
+{
+  "version": "2026-10-24",
+  "documents": [
+    {
+      "id": "planner-weather",
+      "title": "How WeatherWay compares weather at arrival",
+      "url": null,
+      "tags": "weather rain storm wind visibility forecast uncertainty timing departure",
+      "text": "WeatherWay compares forecast conditions at estimated arrivals every 15 driving minutes and candidate departures every five minutes. Its rain, crosswind, visibility and near-freezing exposure classes are demonstration heuristics, not calibrated accident probabilities. Unknown weather cannot be called clear. Longer-range GFS data are interpolated to a 15-minute returned cadence. Baseline road travel times do not predict weather slowdowns. A lower-exposure recommendation is a comparison within the analyzed options, not a guarantee."
+    },
+    {
+      "id": "planner-breaks",
+      "title": "WeatherWay break timing and venue limits",
+      "url": null,
+      "tags": "food meal restaurant stop break wait rain storm detour opening hours shelter",
+      "text": "The optimizer compares checkpoint stop areas, up to three stops and 90 minutes of total break time. It tests waits before an upcoming higher-exposure segment at a checkpoint whose arrival is lower or caution. Forecasts after each break are recalculated. Food breaks are considered after 45 driving minutes and at least 30 minutes before the destination on drives of 90 minutes or more. These are search areas, not verified businesses or shelters. Venue detours, opening hours, dietary suitability and stationary exposure are not modeled. Use the nearby-place search to find businesses, then verify their details."
+    },
+    {
+      "id": "planner-fuel",
+      "title": "WeatherWay fuel and reserve assumptions",
+      "url": null,
+      "tags": "fuel gas gasoline petrol diesel refuel mileage mpg tank reserve range car",
+      "text": "Gasoline and diesel estimates use 85% of the saved highway MPG and retain a 15% tank reserve. Tank capacity is in US gallons and supplied by the traveler. A refuel assumes a full tank. Fuel estimates exclude idling and venue detours. A checkpoint plan can be unreachable when the remaining range is smaller than checkpoint spacing; it cannot verify that a real gas station is reachable. Electric-vehicle charging and alternative-fuel MPGe are not supported."
+    },
+    {
+      "id": "nws-flood",
+      "title": "National Weather Service: flooded roads",
+      "url": "https://www.weather.gov/safety/flood-turn-around-dont-drown",
+      "tags": "flood flooded flooding water rain storm road closure barricade",
+      "text": "Avoid roads covered by floodwater and obey closures. Water can conceal a damaged road and can move a vehicle. Take another route or delay travel rather than attempting a flooded crossing. A precipitation forecast alone does not establish whether an individual road is flooded. This summary is general preparedness guidance, not a live flood warning."
+    },
+    {
+      "id": "nws-fog",
+      "title": "National Weather Service: driving in fog",
+      "url": "https://www.weather.gov/safety/fog-driving",
+      "tags": "fog visibility low poor dense driving headlights stopping",
+      "text": "Fog calls for slower travel, more following distance and low-beam headlights. If visibility becomes extremely poor, seek a suitable parking location away from traffic rather than continuing to drive. A suggested restaurant is not automatically a verified refuge. This summary is general guidance; current road and weather conditions still need checking."
+    },
+    {
+      "id": "epa-mileage",
+      "title": "FuelEconomy.gov: driving efficiency",
+      "url": "https://www.fueleconomy.gov/feg/driveHabits.jsp",
+      "tags": "fuel gas mpg mileage efficiency speed acceleration braking idling",
+      "text": "Rapid acceleration, abrupt braking and higher speeds can reduce fuel economy. Actual fuel usage varies with driving conditions and behavior, so a published highway rating is a planning estimate. Extra idling also consumes fuel. WeatherWay's MPG reduction is its own planning heuristic and is not an EPA weather-specific correction."
+    }
+  ]
+}

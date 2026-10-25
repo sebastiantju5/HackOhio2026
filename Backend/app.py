@@ -13,10 +13,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-from trips import trips
+from trips import trips, selected_analysis
 from corridor import TripError
 from providers import ProviderError
 from vehicles import epa_vehicle, validate_vehicle, vehicle_options
+from journey import request_slot, run_journey, validate_question
+from openrouter_client import JourneyError, configured, model_name
+from retrieval import knowledge
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
@@ -264,6 +267,42 @@ def account_vehicle():
         return jsonify({"error": str(error)}), error.status
     except psycopg.Error:
         return jsonify({"error": "Vehicle storage is unavailable. Start PostgreSQL and run uv run python Backend/app.py --init-db."}), 503
+
+
+@app.get('/api/journey/config')
+def journey_config():
+    return jsonify({'configured': configured(), 'model': model_name(), 'retrievalMethod': 'BM25',
+                    'knowledgeVersion': knowledge()['version'], 'documents': len(knowledge()['documents'])})
+
+
+@app.post('/api/journey/chat')
+def journey_chat():
+    if not bearer_token():
+        return jsonify({'error': 'Sign in to use the journey agent.'}), 401
+    try:
+        question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade = validate_question(request.get_json(silent=True))
+        data = request.get_json()
+        with connect() as conn:
+            user = account_for_token(conn, bearer_token())
+            if not user:
+                return jsonify({'error': 'Sign in to use the journey agent.'}), 401
+            row = conn.execute('SELECT profile FROM account_vehicles WHERE account_id = %s', (user['id'],)).fetchone()
+            vehicle = row['profile'] if row else None
+        if not configured():
+            raise JourneyError('The journey agent is not configured on this server.', 503)
+        selected = selected_analysis(data['analysisId'], data['candidateId'])
+        if selected is None:
+            return jsonify({'error': 'This analysis expired. Click Find Window to refresh forecasts.'}), 410
+        snapshot, route, candidate = selected
+        with request_slot(user['id']):
+            result = run_journey(user['id'], data['analysisId'], snapshot, route, candidate, vehicle, question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade)
+        return jsonify(result | {'analysisId': data['analysisId'], 'candidateId': data['candidateId']})
+    except TripError as error:
+        return jsonify({'error': str(error)}), 400
+    except JourneyError as error:
+        return jsonify({'error': str(error)}), error.status
+    except psycopg.Error:
+        return jsonify({'error': 'Account storage is unavailable. The journey agent requires a signed-in account.'}), 503
 
 
 ensure_db_ready()

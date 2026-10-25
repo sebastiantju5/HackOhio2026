@@ -11,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from corridor import UTC, iso
+from corridor import FIELDS, UTC, finite_number, iso
 
 
 class ProviderError(RuntimeError):
@@ -104,16 +104,21 @@ def fetch_routes(origin, destination, departure, alternatives=True):
     return route_cache.get_or_load(key, load)
 
 
-def forecast_model(locations):
-    """HRRR covers the continental US. Anywhere else uses the global GFS model."""
+def forecast_model(locations, last=None, now=None):
+    """Use HRRR only while the whole trip fits its short 15-minute horizon.
+
+    Its published horizon is 18h; leave 2h for model publication lag. GFS
+    provides the longer-range series, returned at an interpolated 15m cadence.
+    """
     def in_hrrr(lon, lat):
         return -134 <= lon <= -60 and 21 <= lat <= 53
-    if locations and all(in_hrrr(lon, lat) for lon, lat in locations):
+    within_horizon = last is None or last <= (now or datetime.now(UTC)) + timedelta(hours=16)
+    if within_horizon and locations and all(in_hrrr(lon, lat) for lon, lat in locations):
         return "gfs_hrrr", "NOAA HRRR (gfs_hrrr)"
     return "gfs_seamless", "NOAA GFS (gfs_seamless)"
 
 
-def fetch_forecasts(routes, start, end):
+def fetch_forecasts(routes, start, end, *, now=None):
     points = [p for route in routes for p in route["checkpoints"]]
     # Keep sensitivity lookups covered and align preceding-sum endpoints to quarter hours.
     first = start - timedelta(minutes=30)
@@ -122,7 +127,7 @@ def fetch_forecasts(routes, start, end):
     last = end + timedelta(seconds=max(r["durationSeconds"] for r in routes), minutes=120)
     last = last.replace(second=0, microsecond=0) + timedelta(minutes=(15 - last.minute % 15) % 15)
     locations = list(dict.fromkeys(tuple(p["coordinates"]) for p in points))
-    model, model_label = forecast_model(locations)
+    model, model_label = forecast_model(locations, last, now)
     key = (tuple(locations), iso(first), iso(last), model)
 
     def load():
@@ -148,11 +153,23 @@ def fetch_forecasts(routes, start, end):
             by_location[location] = {"times": times, "values": values, "intervalSeconds": 900,
                                      "gridCoordinates": [item.get("longitude"), item.get("latitude")]}
         fetched = iso(datetime.now(UTC))
-        all_times = [stamp for series in by_location.values() for stamp in series["times"]]
+        # Timestamp slots can exist while every value is null beyond a model's
+        # horizon. Report only timestamps with all required measurements at all
+        # locations as usable coverage, and keep gaps explicitly partial.
+        valid_sets = []
+        for series in by_location.values():
+            valid_sets.append({stamp for index, stamp in enumerate(series["times"])
+                               if all(index < len(series["values"][field]) and finite_number(series["values"][field][index])
+                                      for field in FIELDS)})
+        valid_times = set.intersection(*valid_sets)
+        expected_times = set(range(int(first.timestamp()), int(last.timestamp()) + 1, 900))
         source = {"provider": "Open-Meteo", "model": model_label, "retrievedAt": fetched,
-                  "validStart": iso(datetime.fromtimestamp(min(all_times), UTC)),
-                  "validEnd": iso(datetime.fromtimestamp(max(all_times), UTC)), "cadenceMinutes": 15,
-                  "note": "15-minute returned cadence; some variables may be derived or interpolated. Model issue time not supplied."}
+                  "validStart": iso(datetime.fromtimestamp(min(valid_times), UTC)) if valid_times else None,
+                  "validEnd": iso(datetime.fromtimestamp(max(valid_times), UTC)) if valid_times else None,
+                  "coverageStatus": "complete" if expected_times <= valid_times else "partial", "cadenceMinutes": 15,
+                  "note": ("Short-range HRRR forecast; some measurements are derived or interpolated. " if model == "gfs_hrrr" else
+                           "GFS selected for longer-range or out-of-area coverage. Returned 15-minute values are interpolated from coarser model data. ")
+                          + "Model issue time not supplied. Missing measurements remain unknown."}
         return by_location, source
 
     by_location, source = weather_cache.get_or_load(key, load)
