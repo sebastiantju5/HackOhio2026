@@ -1,5 +1,5 @@
 import { compactRoute } from './routeGeometry.js'
-import { fromWallInput } from './format.js'
+import { compareFuelStations } from './fuelPrices.js'
 
 let loading
 let authFailed = false
@@ -53,25 +53,29 @@ export function loadGoogleMaps() {
   if (authFailed) {
     return Promise.reject(new Error('Google Maps authentication failed.'))
   }
-  if (window.google?.maps?.places && window.google.maps.Geocoder) {
+  if (window.google?.maps?.Map && window.google?.maps?.places && window.google?.maps?.Geocoder) {
     return Promise.resolve(window.google)
   }
   if (!loading) {
     loading = new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places&v=weekly&loading=async`
-      script.async = true
-      script.onerror = () => {
-        loading = null
-        notifyAuthFailure()
-        reject(new Error('Google Maps failed to load. Check network connection or API key.'))
-      }
-      script.onload = () => {
+      const callbackName = '__googleMapsCallback_' + Math.random().toString(36).slice(2)
+      window[callbackName] = () => {
+        delete window[callbackName]
         if (authFailed) {
           reject(new Error('Google Maps authentication failed.'))
         } else {
           resolve(window.google)
         }
+      }
+
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places,routes,geometry,marker&callback=${callbackName}`
+      script.async = true
+      script.onerror = () => {
+        delete window[callbackName]
+        loading = null
+        notifyAuthFailure()
+        reject(new Error('Google Maps failed to load. Check network connection or API key.'))
       }
       document.head.appendChild(script)
     })
@@ -198,14 +202,16 @@ export async function searchPlaceSuggestions(query) {
   return []
 }
 
-export async function getGoogleRoutes(form) {
-  const google = await loadGoogleMaps()
+export async function getGoogleRoutes(form, departure, googleApi = null) {
+  const departureTime = new Date(departure)
+  if (!Number.isFinite(departureTime.getTime())) throw new Error('Choose a valid route departure time.')
+  const google = googleApi || await loadGoogleMaps()
   const { Route } = await google.maps.importLibrary('routes')
   const location = place => ({ lng: place.coordinates[0], lat: place.coordinates[1] })
   const result = await Route.computeRoutes({
     origin: location(form.originPlace), destination: location(form.destinationPlace),
     travelMode: 'DRIVING', computeAlternativeRoutes: form.alternatives,
-    departureTime: new Date(fromWallInput(form.start)), routingPreference: 'TRAFFIC_AWARE',
+    departureTime, routingPreference: 'TRAFFIC_AWARE',
     fields: ['path', 'legs', 'durationMillis', 'distanceMeters'],
   }).catch(error => {
     console.warn('WeatherWay Google Routes:', String(error.message || error).split('\n')[0].replace(/AIza[\w-]+/g, '[redacted]'))
@@ -232,4 +238,16 @@ export async function findStopPlaces(stop, fuelOnly = stop.fuel) {
   })
   return places.map(place => ({ id: place.id, name: place.displayName, address: place.formattedAddress,
     url: place.googleMapsURI, coordinates: [place.location.lng(), place.location.lat()] }))
+}
+
+export async function findStopFuelPrices(stop, grade, googleApi = null) {
+  const google = googleApi || await loadGoogleMaps()
+  const { Place, SearchNearbyRankPreference } = await google.maps.importLibrary('places')
+  const { places } = await Place.searchNearby({
+    fields: ['id', 'displayName', 'formattedAddress', 'location', 'googleMapsURI', 'fuelOptions'],
+    locationRestriction: { center: { lat: stop.coordinates[1], lng: stop.coordinates[0] }, radius: 1500 },
+    includedTypes: ['gas_station'], maxResultCount: 10, rankPreference: SearchNearbyRankPreference.DISTANCE,
+  })
+  return compareFuelStations(places.map(place => ({ id: place.id, name: place.displayName, address: place.formattedAddress,
+    url: place.googleMapsURI, coordinates: [place.location.lng(), place.location.lat()], fuelPrices: place.fuelOptions?.fuelPrices })), grade)
 }

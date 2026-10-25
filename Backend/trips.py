@@ -17,6 +17,19 @@ from vehicles import retail_fuel_prices, validate_vehicle
 trips = Blueprint("trips", __name__)
 analyses = BoundedCache(maximum=16, ttl=900)
 
+
+def selected_analysis(analysis_id, candidate_id):
+    with analyses.lock:
+        item = analyses.items.get(analysis_id)
+        if not item or monotonic() - item[0] >= analyses.ttl:
+            return None
+        snapshot = item[1]
+    candidate = next((c for c in snapshot['candidates'] if c['id'] == candidate_id), None)
+    if not candidate:
+        raise TripError('Choose a departure from this analysis.')
+    route = next(r for r in snapshot['routes'] if r['id'] == candidate['routeId'])
+    return snapshot, route, candidate
+
 PLACES = [
     {"name": "Columbus, OH", "coordinates": [-82.9988, 39.9612]},
     {"name": "Cleveland, OH", "coordinates": [-81.6944, 41.4993]},
@@ -67,7 +80,10 @@ def analyze():
             for point, series in zip(route["checkpoints"], forecasts[route["id"]]):
                 point["forecastGridCoordinates"] = series.get("gridCoordinates")
         analysis_id = str(uuid4())
-        analyses.get_or_load(analysis_id, lambda: (routes, forecasts, candidates, is_demo))
+        analyses.get_or_load(analysis_id, lambda: {'routes': routes, 'forecasts': forecasts, 'candidates': candidates,
+                                                 'isDemo': is_demo, 'origin': trip['origin']['name'],
+                                                 'destination': trip['destination']['name'], 'timeZone': trip['timeZone'],
+                                                 'sources': sources, 'generatedAt': iso(datetime.now(UTC))})
         return jsonify({"analysisId": analysis_id, "generatedAt": iso(datetime.now(UTC)), "dataMode": trip["dataMode"],
                         "timeZone": trip["timeZone"], "origin": trip["origin"], "destination": trip["destination"],
                         "scoringVersion": SCORING_VERSION, "sources": sources, "routes": routes, "candidates": candidates,
@@ -88,20 +104,15 @@ def stop_plan():
         data = request.get_json(silent=True)
         if not isinstance(data, dict) or not isinstance(data.get("analysisId"), str):
             raise TripError("Analyze a trip before planning stops.")
-        with analyses.lock:
-            item = analyses.items.get(data["analysisId"])
-            if not item or monotonic() - item[0] >= analyses.ttl:
-                return jsonify({"error": "This analysis expired. Click Find Window to refresh forecasts."}), 410
-            routes, forecasts, candidates, is_demo = item[1]
-        candidate = next((c for c in candidates if c["id"] == data.get("candidateId")), None)
-        if not candidate:
-            raise TripError("Choose a departure from this analysis.")
-        route = next(r for r in routes if r["id"] == candidate["routeId"])
+        selected = selected_analysis(data['analysisId'], data.get('candidateId'))
+        if selected is None:
+            return jsonify({"error": "This analysis expired. Click Find Window to refresh forecasts."}), 410
+        snapshot, route, candidate = selected
         vehicle = validate_vehicle(data["vehicle"]) if data.get("vehicle") is not None else None
-        plan = plan_stops(route, forecasts[route["id"]], candidate, vehicle,
+        plan = plan_stops(route, snapshot['forecasts'][route["id"]], candidate, vehicle,
                           data.get("startingFuel", 1), data.get("includeFood", True))
         return jsonify(plan | {"analysisId": data["analysisId"], "candidateId": candidate["id"],
-                               "dataMode": "demo" if is_demo else "live"})
+                               "dataMode": "demo" if snapshot['isDemo'] else "live"})
     except TripError as error:
         return jsonify({"error": str(error)}), 400
     except ProviderError as error:

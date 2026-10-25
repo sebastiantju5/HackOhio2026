@@ -1,13 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import RouteMap from './RouteMap.jsx'
 import DepartureScrubber from './DepartureScrubber.jsx'
 import StopPlanner from './StopPlanner.jsx'
-import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
+import JourneyAgent from './JourneyAgent.jsx'
+import RouteStops from './RouteStops.jsx'
+import { planMatchesSelection } from './stopPresentation.js'
+import { LEVELS, TIME_ZONE, clock, day, duration, miles, toWallInput } from './format.js'
 import PlaceField from './PlaceField.jsx'
 import { geocodeAddress, getGoogleRoutes, mapsKey } from './googleMaps.js'
+import { analyzeTrip, candidateWithStops, departureRange } from './tripAnalysis.js'
 import './TripPlanner.css'
 
 const CURRENT_YEAR = new Date().getFullYear()
+const EMPTY_PLACES = []
+const EMPTY_FOCUS = { stopIndex: null, venueId: null, sequence: 0 }
 
 const PLACES = [
   { name: 'Columbus, OH', coordinates: [-82.9988, 39.9612] },
@@ -26,14 +32,6 @@ function windowLabel(minutes) {
   if (hours && rest) return `${hours}h ${rest}m`
   if (hours) return `${hours}h`
   return `${rest}m`
-}
-
-function departureRange(leave, minutes) {
-  const center = new Date(fromWallInput(leave)).getTime()
-  return {
-    start: new Date(center - minutes * 60000).toISOString(),
-    end: new Date(center + minutes * 60000).toISOString(),
-  }
 }
 
 function describeWindow(leave, minutes) {
@@ -67,22 +65,7 @@ async function resolvePlaces(form) {
 }
 
 async function getAnalysis(form, signal) {
-  if (!form.originPlace?.coordinates || !form.destinationPlace?.coordinates) {
-    throw new Error('Choose a starting point and a destination.')
-  }
-  const range = departureRange(form.leave, Number(form.windowMinutes))
-  const googleRoutes = form.mode === 'live' && mapsKey() ? await getGoogleRoutes(form).catch(() => undefined) : undefined
-  if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-  const response = await fetch('/api/trips/analyze', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-    body: JSON.stringify({ origin: form.originPlace, destination: form.destinationPlace,
-      departureStart: range.start, departureEnd: range.end, timeZone: TIME_ZONE,
-      includeAlternatives: form.alternatives, dataMode: form.mode, googleRoutes }),
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.error || 'The planner is unavailable. Check that the Flask backend is running on port 5001.')
-  if (!data.routes?.length || !data.candidates?.length) throw new Error('The server returned no usable route comparisons.')
-  return data
+  return analyzeTrip(form, { signal, mapsAvailable: Boolean(mapsKey()), getRoutes: getGoogleRoutes, timeZone: TIME_ZONE })
 }
 
 function Metric({ label, children, note }) {
@@ -143,6 +126,13 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
   const [_routingProvider, setRoutingProvider] = useState('OSRM')
   const [fuelPrices, setFuelPrices] = useState(null)
   const [stopPlan, setStopPlan] = useState(null)
+  const [stopVisibility, setStopVisibility] = useState({ plan: null, hidden: [] })
+  const visibilityRef = useRef(stopVisibility)
+  useEffect(() => { visibilityRef.current = stopVisibility }, [stopVisibility])
+  const [mapFocus, setMapFocus] = useState({ stopIndex: null, venueId: null, sequence: 0 })
+  const [nearbyPlaces, setNearbyPlaces] = useState([])
+  const focusRef = useRef(mapFocus)
+  useEffect(() => { focusRef.current = mapFocus }, [mapFocus])
   const request = useRef(null)
   const initialForm = useRef(form)
   const mapRegion = useRef(null)
@@ -248,17 +238,55 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
   const route = analysis?.routes.find(item => item.id === routeId)
   const candidates = analysis?.candidates.filter(item => item.routeId === routeId) || []
   const candidate = candidates[departureIndex] || candidates[0]
-  const activePlan = stopPlan?.candidateId === candidate?.id && stopPlan?.analysisId === analysis?.analysisId ? stopPlan : null
-  const displayCandidate = activePlan ? {
-    ...candidate,
-    arrival: activePlan.arrival,
-    higherMinutes: activePlan.higherMinutes,
-    checkpoints: activePlan.checkpointConditions,
-    segmentLevels: activePlan.segmentLevels,
-  } : candidate
+  const activePlan = planMatchesSelection(stopPlan, analysis?.analysisId, candidate, route) ? stopPlan : null
+  const hiddenStops = activePlan && stopVisibility.plan === activePlan ? stopVisibility.hidden : EMPTY_PLACES
+  const displayCandidate = useMemo(() => candidateWithStops(candidate, activePlan), [candidate, activePlan])
+  const weatherSource = analysis?.sources.find(source => source.model)
+  const coverageComplete = displayCandidate?.complete
 
   const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
   const fuel = driveFuel(route, vehicle, fuelPrices)
+
+  const selectMapStop = useCallback((index, venueId = null) => {
+    if (focusRef.current.stopIndex !== index) setNearbyPlaces([])
+    setMapFocus(current => ({ stopIndex: index, venueId, sequence: current.sequence + 1 }))
+  }, [])
+  const revealMap = useCallback(() => mapRegion.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), [])
+  const applyPlan = useCallback(plan => {
+    if (plan === null) {
+      setStopPlan(null); setNearbyPlaces([]); selectMapStop(null)
+      return
+    }
+    if (!planMatchesSelection(plan, analysis?.analysisId, candidate, route)) return
+    const hidden = visibilityRef.current.plan === plan ? visibilityRef.current.hidden : []
+    setStopVisibility({ plan, hidden })
+    setStopPlan(plan); setNearbyPlaces([])
+    const first = plan.stops.findIndex((_, index) => !hidden.includes(index))
+    selectMapStop(first >= 0 ? first : null)
+    if (plan.stops.length) requestAnimationFrame(revealMap)
+  }, [analysis?.analysisId, candidate, route, selectMapStop, revealMap])
+  const showPlanStop = useCallback((plan, index) => {
+    applyPlan(plan)
+    setStopVisibility(current => ({ plan, hidden: current.plan === plan ? current.hidden.filter(item => item !== index) : [] }))
+    selectMapStop(index); requestAnimationFrame(revealMap)
+  }, [applyPlan, selectMapStop, revealMap])
+
+  function toggleStop(index) {
+    const hiding = !hiddenStops.includes(index)
+    const hidden = hiding ? [...hiddenStops, index] : hiddenStops.filter(item => item !== index)
+    setStopVisibility({ plan: activePlan, hidden })
+    if (hiding && mapFocus.stopIndex === index) {
+      setNearbyPlaces([])
+      const next = activePlan.stops.findIndex((_, item) => !hidden.includes(item))
+      selectMapStop(next >= 0 ? next : null)
+    } else if (!hiding) selectMapStop(index)
+  }
+
+  function useRecommendation() {
+    if (!recommended) return
+    setRouteId(recommended.routeId)
+    setDepartureIndex(analysis.candidates.filter(item => item.routeId === recommended.routeId).findIndex(item => item.id === recommended.id))
+  }
 
   return (
     <div className="planner-app">
@@ -397,21 +425,26 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
             <div className="route-spec-heading">
               <h2>{analysis ? <>{analysis.origin.name.split(',')[0]} <span className="route-arrow">→</span> {analysis.destination.name.split(',')[0]}</> : 'Explore the road ahead'}</h2>
               <p>{route ? `${miles(route.distanceMeters)} miles · ${duration(route.durationSeconds)} travel time` : 'Select endpoints and evaluate arrival weather'}</p>
+              {analysis && <p className="route-source-note">{route?.provider}{analysis.dataMode === 'live' && ` · ${route?.trafficAware ? 'Traffic-aware baseline' : 'No live traffic'}`} · {weatherSource?.model}</p>}
             </div>
 
-            {recommended && (
-              <div className="header-recommendation">
-                <span className="rec-kicker">Recommended departure window</span>
-                <p>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</p>
-                {analysis.recommendation?.minutesSaved > 0 && (
-                  <p>Saves {analysis.recommendation.minutesSaved} minutes of storm exposure compared to earlier timing.</p>
-                )}
-              </div>
-            )}
+            <div className="header-badges-wrap">
+              {recommended && (
+                <button type="button" className="pinned-pill-tag" onClick={useRecommendation} title="Jump to optimal departure">
+                  OPTIMAL: {clock(recommended.departure, analysis?.timeZone)} ET
+                </button>
+              )}
+              <span className={`data-mode-tag ${analysis?.dataMode === 'live' ? 'live' : ''}`}>
+                <i /> {analysis ? (analysis.dataMode === 'live' ? 'LIVE FORECAST' : 'SIMULATED') : 'AWAITING ANALYSIS'}
+              </span>
+            </div>
           </div>
 
+          {analysis?.routingNotice && <p className="analysis-notice" role="status">{analysis.routingNotice}</p>}
+          {analysis && <p className={`analysis-coverage ${coverageComplete ? '' : 'partial'}`} role="status">Forecast coverage{activePlan ? ' with breaks' : ''}: {coverageComplete ? 'Complete' : `Partial · ${Math.round(displayCandidate?.unknownMinutes || 0)} driving minutes unknown`}. {weatherSource?.note}</p>}
+
           {/* Compared Alternatives */}
-          {form.alternatives && analysis?.routes?.length > 1 && (
+          {analysis?.routes?.length > 1 && (
             <div className="route-options-bar" role="tablist" aria-label="Route alternatives">
               {analysis.routes.map(r => {
                 const bestForR = analysis.candidates
@@ -448,16 +481,24 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
               route={route}
               candidate={displayCandidate}
               stops={activePlan?.stops}
+              hiddenStops={hiddenStops}
+              focus={activePlan ? mapFocus : EMPTY_FOCUS}
+              onStopSelect={selectMapStop}
+              places={activePlan ? nearbyPlaces : EMPTY_PLACES}
+              timeZone={analysis?.timeZone}
               onSelect={setSelectedPoint}
-              originPlace={form.originPlace}
-              destinationPlace={form.destinationPlace}
+              originPlace={analysis?.origin || form.originPlace}
+              destinationPlace={analysis?.destination || form.destinationPlace}
             />
           </div>
+          {activePlan?.stops.length > 0 && <RouteStops plan={activePlan} route={route} dataMode={analysis.dataMode} timeZone={analysis.timeZone} focus={mapFocus} hiddenStops={hiddenStops} onToggleStop={toggleStop}
+            onSelect={index => { selectMapStop(index); requestAnimationFrame(revealMap) }} onOverview={() => { selectMapStop(null); requestAnimationFrame(revealMap) }} onClear={() => applyPlan(null)} onPlaces={setNearbyPlaces}
+            onVenueSelect={(id, index) => { selectMapStop(index, id); requestAnimationFrame(revealMap) }} />}
 
           {/* Quick Metrics Bar */}
           <div className="bone-trip-metrics">
             <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
-            <Metric label={activePlan ? 'Arrival with breaks' : 'Estimated Arrival'}>
+            <Metric label={activePlan ? 'Arrival with breaks · before detours' : 'Estimated Arrival'}>
               {displayCandidate?.arrival ? `${clock(displayCandidate.arrival, analysis?.timeZone)} ET` : '—'}
             </Metric>
             <Metric label="Higher Exposure">
@@ -488,7 +529,23 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
               <p>{summarizeDrive(displayCandidate, analysis?.timeZone)}</p>
             </section>}
 
+            {recommended && (
+              <div className="bone-rec-bar">
+                <span className="rec-star-quiet" aria-hidden="true">★</span>
+                <div className="rec-bar-content">
+                  <span className="rec-kicker">RECOMMENDED DEPARTURE WINDOW</span>
+                  <h4>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</h4>
+                  <p>
+                    {Math.round(recommended.higherMinutes)} higher-exposure minutes. {analysis.recommendation?.allHigherExposure ? 'Every compared departure includes higher exposure.' : 'Compared using forecast exposure thresholds.'} Baseline travel times are fixed across this window.
+                  </p>
+                </div>
+                <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
+                  Jump to {clock(recommended.departure, analysis?.timeZone)}
+                </button>
+              </div>
+            )}
           </div>
+          {analysis && !recommended && <p className="analysis-notice" role="status">{analysis.recommendation?.reason || 'No complete forecast comparison is available.'}</p>}
 
           {/* Weather-Aware Break Stops Module */}
           {analysis && candidate && (
@@ -500,19 +557,18 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
               vehicleReady={vehicleReady}
               session={session}
               onAccount={onAccount}
-              onApply={setStopPlan}
-              applied={Boolean(activePlan)}
-              onSelect={(cpIndex) => {
-                setSelectedPoint(cpIndex)
-                mapRegion.current?.scrollIntoView({ behavior: 'smooth' })
-              }}
+              onApply={applyPlan}
+              applied={Boolean(activePlan) && !activePlan.journeyPlanId}
+              onSelect={showPlanStop}
             />
           )}
+
+          {analysis && candidate && <JourneyAgent analysis={analysis} candidate={candidate} session={session} vehicle={vehicle} route={route} onAccount={onAccount} onApply={applyPlan} onShowStop={showPlanStop} appliedPlan={activePlan} />}
 
           {/* Card Footer */}
           <div className="bone-card-footer">
             <span>CORRIDOR WEATHER DISPATCH &middot; HACKOHIO 2026</span>
-            <span>5-MIN STEP FORECAST SAMPLING</span>
+            <span>15-MIN WEATHER CHECKPOINTS &middot; 5-MIN DEPARTURES</span>
           </div>
         </section>
       </main>

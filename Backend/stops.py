@@ -14,11 +14,13 @@ MPG_FACTOR = .85
 MAX_WAIT = 90
 
 
-def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=True):
+def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=True, max_wait=MAX_WAIT):
     if not finite_number(starting_fuel) or not .05 <= starting_fuel <= 1:
         raise TripError("Starting fuel must be between 5% and 100%.")
     if not isinstance(food, bool):
         raise TripError("includeFood must be a boolean.")
+    if not isinstance(max_wait, int) or isinstance(max_wait, bool) or not 0 <= max_wait <= MAX_WAIT:
+        raise TripError('The stop budget must be between 0 and 90 minutes.')
     departure = parse_time(candidate["departure"])
     points = route["checkpoints"]
     # MPG estimates are discounted 15%; refuel before reaching a 15% tank reserve.
@@ -81,7 +83,7 @@ def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=Tru
                     choices.append((15, False, False, True))
             for wait, refuel, meal, weather_break in choices:
                 delay = state["delay"] + wait
-                if delay > MAX_WAIT:
+                if delay > max_wait:
                     continue
                 last_refuel = index if refuel else state["refuel"]
                 next_mile = points[index + 1]["distanceMeters"] / MILE
@@ -124,13 +126,15 @@ def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=Tru
         best["worst"], round(best["high"], 1), round(best["weighted"], 2)
     ) < (candidate["worstSeverity"], candidate["higherMinutes"], candidate["weightedExposure"])
     result = {"status": "planned", "stops": best["stops"], "complete": complete,
+              "worstSeverity": best["worst"], "level": CLASS_NAMES[best["worst"]] if complete or best["worst"] > 0 else "unknown",
+              "unknownMinutes": round(best["unknown"], 1), "weightedExposure": round(best["weighted"], 2),
               "departure": candidate["departure"], "arrival": best["arrivals"][-1]["arrival"],
               "totalStopMinutes": best["delay"], "higherMinutes": round(best["high"], 1),
               "baselineHigherMinutes": candidate["higherMinutes"], "weatherImproved": improved,
               "higherMinutesAvoided": round(max(0, candidate["higherMinutes"] - best["high"]), 1) if improved else 0,
               "mealIncluded": best["meal"], "checkpointConditions": best["arrivals"], "segmentLevels": best["levels"],
               "reason": "A break reduces forecast driving exposure." if improved else
-                        "No weather-reducing break found within 90 minutes. Fuel and meal stops may still be included.",
+                        f"No weather-reducing break found within {max_wait} minutes. Fuel and meal stops may still be included.",
               "assumptions": ["Stop locations are search areas near route checkpoints. Verify road access, hours and suitable indoor shelter.",
                               "Times exclude venue detours. A selected business is not a verified shelter or a rerouted itinerary.",
                               "Forecasts are evaluated after every stop; stationary exposure and weather slowdowns are not modeled."]}

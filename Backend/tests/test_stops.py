@@ -26,6 +26,9 @@ class StopPlanningTests(unittest.TestCase):
         self.assertTrue(plan["weatherImproved"])
         self.assertGreater(plan["higherMinutesAvoided"], 0)
         self.assertLess(plan["higherMinutes"], self.candidate["higherMinutes"])
+        self.assertLess(plan['worstSeverity'], self.candidate['worstSeverity'])
+        self.assertNotEqual(plan['level'], self.candidate['level'])
+        self.assertEqual(plan['level'], ['lower', 'caution', 'higher'][plan['worstSeverity']])
         self.assertGreater(len(plan["stops"]), 0)
         for stop in plan["stops"]:
             self.assertIn(stop["arrivalLevel"], ("lower", "caution"))
