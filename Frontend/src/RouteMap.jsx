@@ -6,7 +6,7 @@ import { loadGoogleMaps, mapsKey } from './googleMaps.js'
 
 const latLng = coordinates => [coordinates[1], coordinates[0]]
 
-function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace }) {
+function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPlace }) {
   const container = useRef(null)
   const map = useRef(null)
   const drawn = useRef([])
@@ -64,48 +64,21 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
       })
       line.addListener('click', () => onSelect(index))
     })
-    route.checkpoints.forEach((point, index) => {
-      const level = candidate.checkpoints[index].level
-      const endpoint = index === 0 || index === route.checkpoints.length - 1
-      const position = { lat: point.coordinates[1], lng: point.coordinates[0] }
-      bounds.extend(position)
-      const marker = new google.maps.Marker({
-        position,
-        map: map.current,
-        label: endpoint ? (index === 0 ? 'A' : 'B') : String(index + 1),
-        title: endpoint ? (index === 0 ? origin : destination) : `Checkpoint ${index + 1}: ${LEVELS[level].label}`,
-      })
-      marker.addListener('click', () => onSelect(index))
-      drawn.current.push(marker)
-    })
-    const selected = route.checkpoints[selectedPoint]
-    if (selected) {
-      drawn.current.push(new google.maps.Circle({
-        map: map.current,
-        center: { lat: selected.coordinates[1], lng: selected.coordinates[0] },
-        radius: 1800,
-        strokeColor: '#203f31',
-        strokeWeight: 2,
-        fillOpacity: 0,
-        clickable: false,
-      }))
-    }
     if (!bounds.isEmpty()) map.current.fitBounds(bounds, 55)
-  }, [mapReady, route, candidate, selectedPoint, onSelect, origin, destination])
+  }, [mapReady, route, candidate, onSelect])
 
   return <div className="map-wrap">
-    <div ref={container} className="route-map" role="region" aria-label="Google map of the route. Select numbered checkpoints, or use the checkpoint list below." />
+    <div ref={container} className="route-map" role="region" aria-label="Google map of the route." />
     {mapError && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>The map needs an API key.</h2><p>{mapError}</p></div>}
     {!mapError && !route && !(originPlace?.coordinates && destinationPlace?.coordinates) && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>A little foresight.<br />A better drive.</h2><p>Choose a starting point and a destination anywhere, then analyze the trip.</p></div>}
     <div className="map-legend" aria-label="Exposure legend">{Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}</div>
   </div>
 }
 
-function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination }) {
+function LeafletRouteMap({ route, candidate, onSelect }) {
   const container = useRef(null)
   const map = useRef(null)
   const layers = useRef(null)
-  const highlight = useRef(null)
   const [tileIssue, setTileIssue] = useState(false)
 
   useEffect(() => {
@@ -116,7 +89,6 @@ function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, de
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 18,
     }).on('tileerror', () => setTileIssue(true)).addTo(instance)
     layers.current = L.layerGroup().addTo(instance)
-    highlight.current = L.layerGroup().addTo(instance)
     const observer = new ResizeObserver(() => instance.invalidateSize())
     observer.observe(container.current)
     return () => { observer.disconnect(); instance.remove(); map.current = null }
@@ -136,32 +108,12 @@ function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, de
       const level = candidate.segmentLevels[index]
       L.polyline(segment.coordinates.map(latLng), { color: LEVELS[level].color, weight: 7, opacity: 1, dashArray: level === 'unknown' ? '5 8' : undefined }).addTo(layers.current).on('click', () => onSelect(index))
     })
-    route.checkpoints.forEach((point, index) => {
-      const level = candidate.checkpoints[index].level
-      const endpoint = index === 0 || index === route.checkpoints.length - 1
-      const marker = L.marker(latLng(point.coordinates), {
-        icon: L.divIcon({ className: 'checkpoint-marker', html: `<span class="map-dot ${level} ${endpoint ? 'endpoint' : ''}">${endpoint ? (index === 0 ? 'A' : 'B') : index + 1}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] }),
-        title: `Checkpoint ${index + 1}: ${LEVELS[level].label}`, keyboard: true,
-      }).on('click', () => onSelect(index)).addTo(layers.current)
-      if (endpoint) {
-        const label = document.createElement('span')
-        label.textContent = index === 0 ? origin : destination
-        marker.bindTooltip(label, { permanent: true, direction: index === 0 ? 'left' : 'right', className: 'city-label', offset: [10, 0] })
-      }
-    })
-  }, [route, candidate, onSelect, origin, destination])
-
-  useEffect(() => {
-    if (!highlight.current) return
-    highlight.current.clearLayers()
-    const point = route?.checkpoints[selectedPoint]
-    if (point) L.circleMarker(latLng(point.coordinates), { radius: 19, weight: 2, color: '#203f31', fill: false, interactive: false }).addTo(highlight.current)
-  }, [selectedPoint, route])
+  }, [route, candidate, onSelect])
 
   return <div className="map-wrap">
-    <div ref={container} className="route-map" role="region" aria-label="Interactive route map. Select numbered checkpoints, or use the checkpoint list below." />
+    <div ref={container} className="route-map" role="region" aria-label="Interactive route map." />
     {!route && <div className="map-empty"><span className="mini-label">OHIO WEATHER CORRIDOR</span><h2>A little foresight.<br />A better drive.</h2><p>Plan a trip to see conditions along the way.</p></div>}
-    {tileIssue && <p className="tile-warning" role="status">Some map tiles are unavailable. Checkpoints and route geometry remain interactive.</p>}
+    {tileIssue && <p className="tile-warning" role="status">Some map tiles are unavailable. The route line is still shown.</p>}
     <div className="map-legend" aria-label="Exposure legend">{Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}</div>
   </div>
 }

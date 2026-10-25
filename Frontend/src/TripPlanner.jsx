@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import RouteMap from './RouteMap.jsx'
 import DepartureScrubber from './DepartureScrubber.jsx'
-import CheckpointPanel from './CheckpointPanel.jsx'
 import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
 import PlaceField from './PlaceField.jsx'
 import { geocodeAddress, mapsKey } from './googleMaps.js'
@@ -17,11 +16,42 @@ const PLACES = [
   { name: 'Mansfield, OH', coordinates: [-82.5154, 40.7584] },
 ]
 
+function windowLabel(minutes) {
+  if (!minutes) return 'Exact time'
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours && rest) return `${hours}h ${rest}m`
+  if (hours === 1) return '1 hour'
+  if (hours) return `${hours} hours`
+  return `${minutes} min`
+}
+
+function departureRange(leave, minutes) {
+  const center = new Date(fromWallInput(leave)).getTime()
+  return {
+    start: new Date(center - minutes * 60000).toISOString(),
+    end: new Date(center + minutes * 60000).toISOString(),
+  }
+}
+
+function describeWindow(leave, minutes) {
+  try {
+    const range = departureRange(leave, minutes)
+    if (!minutes) return `Exact · ${clock(range.start)}`
+    const span = day(range.start) === day(range.end)
+      ? `${clock(range.start)}–${clock(range.end)}`
+      : `${day(range.start)} ${clock(range.start)} – ${day(range.end)} ${clock(range.end)}`
+    return `${windowLabel(minutes)} · ${span}`
+  } catch {
+    return windowLabel(minutes)
+  }
+}
+
 function defaults() {
   const start = new Date(Math.ceil((Date.now() + 30 * 60000) / 900000) * 900000)
   return {
     origin: 'Columbus, OH', destination: 'Cleveland, OH', originPlace: PLACES[0], destinationPlace: PLACES[1],
-    start: toWallInput(start), end: toWallInput(new Date(start.getTime() + 7200000)), alternatives: true, mode: 'demo',
+    leave: toWallInput(new Date(start.getTime() + 3600000)), windowMinutes: 60, alternatives: true, mode: 'demo',
   }
 }
 
@@ -40,10 +70,11 @@ async function getAnalysis(form, signal) {
   if (!form.originPlace?.coordinates || !form.destinationPlace?.coordinates) {
     throw new Error('Choose a starting point and a destination.')
   }
+  const range = departureRange(form.leave, Number(form.windowMinutes))
   const response = await fetch('/api/trips/analyze', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
     body: JSON.stringify({ origin: form.originPlace, destination: form.destinationPlace,
-      departureStart: fromWallInput(form.start), departureEnd: fromWallInput(form.end), timeZone: TIME_ZONE,
+      departureStart: range.start, departureEnd: range.end, timeZone: TIME_ZONE,
       includeAlternatives: form.alternatives, dataMode: form.mode }),
   })
   const data = await response.json().catch(() => ({}))
@@ -56,7 +87,7 @@ function Metric({ label, children }) {
   return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
 }
 
-export default function TripPlanner({ session, onAccount, onLogout }) {
+export default function TripPlanner() {
   const [form, setForm] = useState(defaults)
   const [analysis, setAnalysis] = useState(null)
   const [routeId, setRouteId] = useState(null)
@@ -149,7 +180,6 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
   const candidate = candidates[departureIndex] || candidates[0]
   const pointIndex = Math.min(selectedPoint, (route?.checkpoints.length || 1) - 1)
   const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
-  const source = analysis?.sources.find(item => item.model)
   const baseline = analysis?.candidates.find(item => item.routeId === analysis.routes[0].id)
 
   function useRecommendation() {
@@ -160,41 +190,6 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
 
   return (
     <div className="planner-app">
-      {/* Floating Capsule Navbar */}
-      <div className="capsule-wrapper">
-        <nav className="capsule-nav">
-          <a className="capsule-brand" href="#main">
-            <div className="capsule-dot">w</div>
-            <span>WeatherWay Dispatch</span>
-          </a>
-
-          <div className="capsule-links">
-            <span className="capsule-tag-ohio">OHIO CORRIDORS</span>
-            <span className="edition-badge">HACKOHIO / 2026</span>
-          </div>
-
-          <div className="capsule-user-section">
-            {session?.user ? (
-              <div className="user-capsule-badge">
-                <button className="user-profile-button" onClick={onAccount} title={`Signed in as ${session.user.email}`}>
-                  <span className="user-avatar-pip">
-                    {(session.user.name || 'User').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="user-name-txt">{(session.user.name || 'User').split(' ')[0]}</span>
-                </button>
-                <button className="user-logout-button" onClick={onLogout} title="Sign out">
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <button className="capsule-auth-btn" onClick={onAccount}>
-                Sign in ↗
-              </button>
-            )}
-          </div>
-        </nav>
-      </div>
-
       {/* Editorial Hero Stage */}
       <header className="hero-stage">
         <div className="hero-kicker">OHIO HIGHWAY WEATHER CORRIDORS</div>
@@ -243,13 +238,25 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
 
           <div className="capsule-times">
             <label className="capsule-time-input">
-              <span className="field-hint">Leave window</span>
-              <input type="datetime-local" required value={form.start} disabled={busy} onChange={event => update('start', event.target.value)} />
+              <span className="field-hint">Leave</span>
+              <input type="datetime-local" required value={form.leave} disabled={busy} onChange={event => update('leave', event.target.value)} />
             </label>
-            <span className="capsule-dash">–</span>
-            <label className="capsule-time-input">
-              <span className="field-hint">Until</span>
-              <input type="datetime-local" required value={form.end} disabled={busy} onChange={event => update('end', event.target.value)} />
+            <label className="capsule-window">
+              <span className="field-hint">Before & after</span>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="15"
+                value={form.windowMinutes}
+                disabled={busy}
+                aria-valuemin={0}
+                aria-valuemax={360}
+                aria-valuenow={form.windowMinutes}
+                aria-valuetext={form.windowMinutes ? `${windowLabel(form.windowMinutes)} before and after` : 'Exact leave time'}
+                onChange={event => update('windowMinutes', Number(event.target.value))}
+              />
+              <span className="window-size">{describeWindow(form.leave, form.windowMinutes)}</span>
             </label>
           </div>
 
@@ -309,7 +316,6 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
           {/* Map & Checkpoint Split */}
           <div className="bone-split-layout">
             <RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
-            <CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={candidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} />
           </div>
 
           {/* Metrics & Scrubber Details */}
