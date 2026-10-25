@@ -186,6 +186,8 @@ class ValidationAndApiTests(unittest.TestCase):
     def test_live_past_or_far_future_rejected(self):
         with self.assertRaises(TripError):
             validate_request(payload("live"), now=START + timedelta(days=1))
+        with self.assertRaises(TripError):
+            validate_request(payload("live"), now=START - timedelta(days=8))
 
     def test_cache_reuses_results_and_bounds_memory(self):
         cache = BoundedCache(maximum=2)

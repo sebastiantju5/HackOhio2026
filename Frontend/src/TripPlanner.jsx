@@ -22,9 +22,8 @@ function windowLabel(minutes) {
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
   if (hours && rest) return `${hours}h ${rest}m`
-  if (hours === 1) return '1 hr'
-  if (hours) return `${hours} hrs`
-  return `${minutes} min`
+  if (hours) return `${hours}h`
+  return `${rest}m`
 }
 
 function departureRange(leave, minutes) {
@@ -166,6 +165,22 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
     setBusy(true)
     setError('')
     try {
+      if (form.mode === 'live') {
+        const range = departureRange(form.leave, Number(form.windowMinutes))
+        const now = Date.now()
+        const startTime = new Date(range.start).getTime()
+        const endTime = new Date(range.end).getTime()
+        if (startTime < now - 15 * 60000) {
+          setError('Departure time is in the past. Choose a time from now onwards.')
+          setBusy(false)
+          return
+        }
+        if (endTime > now + 7 * 86400000) {
+          setError('For live forecasts, choose a departure window within the next 7 days.')
+          setBusy(false)
+          return
+        }
+      }
       const ready = await resolvePlaces(form)
       if (controller.signal.aborted) return
       setForm(ready)
@@ -177,6 +192,10 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
       if (!controller.signal.aborted) setBusy(false)
     }
   }
+
+  const [mountTime] = useState(() => Date.now())
+  const minLeave = form.mode === 'live' ? toWallInput(new Date(mountTime - 10 * 60000)) : undefined
+  const maxLeave = form.mode === 'live' ? toWallInput(new Date(mountTime + 7 * 86400000 - Number(form.windowMinutes) * 60000)) : undefined
 
   const route = analysis?.routes.find(item => item.id === routeId)
   const candidates = analysis?.candidates.filter(item => item.routeId === routeId) || []
@@ -273,7 +292,15 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
           <div className="capsule-times">
             <label className="capsule-time-input">
               <span className="field-hint">Leave</span>
-              <input type="datetime-local" required value={form.leave} disabled={busy} onChange={event => update('leave', event.target.value)} />
+              <input
+                type="datetime-local"
+                required
+                value={form.leave}
+                disabled={busy}
+                min={minLeave}
+                max={maxLeave}
+                onChange={event => update('leave', event.target.value)}
+              />
             </label>
             <div className="capsule-window">
               <span className="field-hint">Before & after</span>

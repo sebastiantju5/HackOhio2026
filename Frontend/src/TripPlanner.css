@@ -532,27 +532,34 @@
   flex-direction: column;
   gap: 2px;
   cursor: pointer;
+  width: 245px;
+  flex: 0 0 245px;
 }
 
 .capsule-window-body {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
 }
 
 .capsule-window input[type=range] {
   width: 75px;
+  flex-shrink: 0;
   margin: 0;
   accent-color: var(--terracotta);
   cursor: ew-resize;
 }
 
 .window-size {
-  min-width: 0;
+  flex: 1 1 auto;
   font-size: 10.5px;
   font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .capsule-alt-check {
@@ -714,6 +721,7 @@
   }
   .capsule-window {
     width: 100%;
+    flex: none;
     gap: 4px;
   }
   .capsule-window-body {
@@ -721,10 +729,18 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    width: 100%;
   }
   .capsule-window input[type=range] {
-    flex: 1;
+    flex: 1 1 auto;
     width: auto;
+  }
+  .window-size {
+    width: 145px;
+    flex: 0 0 145px;
+    text-align: right;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
   }
   .capsule-alt-check {
     margin: 2px 0;

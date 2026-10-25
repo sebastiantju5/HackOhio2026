@@ -70,8 +70,8 @@ def validate_request(data, now=None):
         raise TripError("Choose different origin and destination locations.")
     if mode == "live":
         now = now or datetime.now(UTC)
-        if start < now - timedelta(minutes=15) or end > now + timedelta(hours=12):
-            raise TripError("For live forecasts, depart between now and the next 12 hours.")
+        if start < now - timedelta(minutes=15) or end > now + timedelta(days=7):
+            raise TripError("For live forecasts, depart between now and the next 7 days.")
     alternatives = data.get("includeAlternatives", True)
     if not isinstance(alternatives, bool):
         raise TripError("includeAlternatives must be a boolean.")
