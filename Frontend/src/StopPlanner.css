@@ -1,6 +1,8 @@
 .stop-planner { border-top: 1px solid var(--border); padding: 24px 26px; background: #f0ede4; color: var(--ink); }
 .right-stops-board > .stop-planner:first-child { border-top: 0; }
 .right-stops-board > .route-stops + .stop-planner { border-top: 0; }
+.stop-planner.is-embedded { border: 0; padding: 0; background: transparent; margin-top: 18px; }
+.stop-planner.is-embedded > .stop-kicker { display: block; margin-bottom: 12px; }
 .stop-intro, .stop-summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .stop-kicker { font: 10px var(--font-mono); letter-spacing: 1.4px; color: var(--terracotta); }
 .stop-intro h3 { font: 400 36px var(--font-serif); margin: 10px 0; }
@@ -36,7 +38,7 @@
 .stop-place-actions button { background: white; color: var(--terracotta); border: 1px solid var(--border-dark); border-radius: 6px; padding: 9px 12px; font: inherit; cursor: pointer; }
 .stop-venues { display: grid; gap: 8px; margin-top: 20px; }
 .stop-venues small { color: var(--ink-dim); font-size: 10px; }
-.stop-venues a { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--border); text-decoration: none; font-size: 12px; }
+.stop-venues button { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; padding: 12px 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--ink); text-align: left; font-size: 12px; font-weight: 600; cursor: pointer; }
 .stop-venues span { color: var(--ink-dim); font-size: 11px; }
 .stop-assumptions { font-size: 12px; line-height: 1.7; margin-top: 22px; }
 .stop-assumptions summary { cursor: pointer; }

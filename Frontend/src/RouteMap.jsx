@@ -46,11 +46,12 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
         map.current = new google.maps.Map(container.current, {
           center: { lat: 39.96, lng: -82.99 },
           zoom: 6,
+          clickableIcons: false,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
         })
-        info.current = new google.maps.InfoWindow()
+        info.current = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 340 })
         setMapReady(true)
         setMapError('')
       } catch (err) {
@@ -92,7 +93,7 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
     route.segments.forEach((segment, index) => {
       const level = candidate.segmentLevels[index]
       const line = addPath(segment.coordinates, {
-        strokeColor: LEVELS[level].color,
+        strokeColor: (LEVELS[level] || LEVELS.unknown).color,
         strokeWeight: 6,
         strokeOpacity: 1,
         icons: level === 'unknown' ? [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '12px' }] : undefined,
@@ -121,11 +122,21 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
       drawn.current.push(marker)
     })
     places.forEach((place, index) => {
-      const marker = new google.maps.Marker({ map: map.current, position: { lng: place.coordinates[0], lat: place.coordinates[1] },
-        label: { text: `V${index + 1}`, color: '#fff', fontSize: '11px' }, title: `Nearby option: ${place.name}`,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 16, fillColor: '#245c8b', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }, zIndex: 900 })
+      if (!Array.isArray(place.coordinates) || !place.coordinates.every(Number.isFinite)) return
+      const restaurant = place.kind === 'restaurant' || place.pinned
+      const marker = new google.maps.Marker({
+        map: map.current,
+        position: { lng: place.coordinates[0], lat: place.coordinates[1] },
+        title: restaurant ? (place.name || place.address) : (place.address || place.name),
+        zIndex: restaurant ? 1400 : 900,
+        ...(restaurant ? {} : {
+          label: { text: `V${index + 1}`, color: '#fff', fontSize: '11px' },
+          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 16, fillColor: '#245c8b', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+        }),
+      })
       marker.addListener('click', () => onStopSelect(place.stopIndex, place.id))
-      venueMarkers.current.push(marker); drawn.current.push(marker)
+      venueMarkers.current[index] = marker
+      drawn.current.push(marker)
     })
   }, [mapReady, route, candidate, stops, onSelect, originPlace, destinationPlace, places, onStopSelect, timeZone, hiddenStops])
 
@@ -136,12 +147,12 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
     const stop = stops?.[focus.stopIndex]
     const place = places[venueIndex]
     const marker = place ? venueMarkers.current[venueIndex] : stopMarkers.current[focus.stopIndex]
-    if ((place || stop) && marker) {
-      const coordinates = place?.coordinates || stop.coordinates
-      map.current.setZoom(12)
+    const coordinates = place?.coordinates || stop?.coordinates
+    if ((place || stop) && marker && Array.isArray(coordinates) && coordinates.every(Number.isFinite)) {
+      map.current.setZoom(place?.kind === 'restaurant' || place?.pinned ? 14 : 12)
       map.current.panTo({ lat: coordinates[1], lng: coordinates[0] })
-      info.current.setContent(place ? venuePopup(place) : stopPopup(stop, focus.stopIndex, timeZone))
-      info.current.open({ map: map.current, anchor: marker })
+      info.current?.setContent(place ? venuePopup(place, () => info.current?.close()) : stopPopup(stop, focus.stopIndex, timeZone))
+      info.current?.open({ map: map.current, anchor: marker })
     } else {
       info.current?.close()
       const bounds = new window.google.maps.LatLngBounds()
@@ -245,7 +256,7 @@ function LeafletRouteMap({ route, candidate, onSelect, originPlace, destinationP
     L.polyline(route.geometry.coordinates.map(latLng), { color: '#fbf9ef', weight: 13, opacity: 0.95 }).addTo(layers.current)
     route.segments.forEach((segment, index) => {
       const level = candidate.segmentLevels[index]
-      L.polyline(segment.coordinates.map(latLng), { color: LEVELS[level].color, weight: 7, opacity: 1, dashArray: level === 'unknown' ? '5 8' : undefined }).addTo(layers.current).on('click', () => onSelect(index))
+      L.polyline(segment.coordinates.map(latLng), { color: (LEVELS[level] || LEVELS.unknown).color, weight: 7, opacity: 1, dashArray: level === 'unknown' ? '5 8' : undefined }).addTo(layers.current).on('click', () => onSelect(index))
     })
 
     ;[{ coordinates: route.geometry.coordinates[0], label: 'A', title: `Start: ${originPlace?.name || 'Origin'}` },
@@ -263,10 +274,15 @@ function LeafletRouteMap({ route, candidate, onSelect, originPlace, destinationP
       stopMarkers.current[index] = marker
     })
     places.forEach((place, index) => {
-      const marker = L.marker(latLng(place.coordinates), { icon: L.divIcon({ className: 'route-stop-icon', html: `<span class="route-venue-pin">V${index + 1}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] }),
-        title: `Nearby option: ${place.name}`, zIndexOffset: 900 }).bindPopup(venuePopup(place), { maxWidth: 260 })
+      if (!Array.isArray(place.coordinates) || !place.coordinates.every(Number.isFinite)) return
+      const restaurant = place.kind === 'restaurant' || place.pinned
+      const icon = restaurant
+        ? L.divIcon({ className: 'route-stop-icon', html: '<span class="route-checkpoint-pin"></span>', iconSize: [28, 40], iconAnchor: [14, 38] })
+        : L.divIcon({ className: 'route-stop-icon', html: `<span class="route-venue-pin">V${index + 1}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] })
+      const marker = L.marker(latLng(place.coordinates), { icon, title: restaurant ? (place.name || place.address) : (place.address || place.name), zIndexOffset: restaurant ? 1400 : 900 })
+        .bindPopup(venuePopup(place), { maxWidth: 280, closeButton: true })
         .on('click', () => onStopSelect(place.stopIndex, place.id)).addTo(layers.current)
-      venueMarkers.current.push(marker)
+      venueMarkers.current[index] = marker
     })
   }, [route, candidate, stops, onSelect, originPlace, destinationPlace, places, onStopSelect, timeZone, hiddenStops])
 

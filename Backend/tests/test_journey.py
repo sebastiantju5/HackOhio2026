@@ -70,6 +70,15 @@ class JourneyTests(unittest.TestCase):
         self.assertEqual(result['retrievalMethod'], 'BM25')
         self.assertEqual(result['citations'][0]['id'], 'trip')
 
+    def test_model_only_sees_local_times_for_trip_and_stops(self):
+        tool = {'tool_calls': [{'id': 'one', 'type': 'function', 'function': {
+            'name': 'compare_break_options', 'arguments': json.dumps({'includeFood': True, 'maxStopMinutes': 60})}}], 'content': None}
+        with patch('journey.complete', side_effect=[(tool, {}), final(plan_id='plan-1')]) as provider:
+            self.run_agent('Where can I stop for lunch?')
+        model_input = json.dumps(provider.call_args.args[0])
+        self.assertIn('arrival', model_input)
+        self.assertNotRegex(model_input, r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[^"]*Z')
+
     def test_tool_plan_enforces_user_budget_and_returns_native_preview_fields(self):
         tool = {'tool_calls': [{'id': 'one', 'type': 'function', 'function': {
             'name': 'compare_break_options', 'arguments': json.dumps({'includeFood': True, 'maxStopMinutes': 90})}}], 'content': None}

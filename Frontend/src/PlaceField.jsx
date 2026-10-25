@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { searchPlaceSuggestions } from './googleMaps.js'
 
-export default function PlaceField({ hint, value, disabled, onText, onPlace }) {
+export default function PlaceField({ hint, marker = 'origin', value, disabled, onText, onPlace }) {
   const input = useRef(null)
   const [suggestions, setSuggestions] = useState([])
   const [open, setOpen] = useState(false)
@@ -83,20 +83,23 @@ export default function PlaceField({ hint, value, disabled, onText, onPlace }) {
   return (
     <div ref={containerRef} className="place-field-wrapper">
       <label className="capsule-input-pair">
-        <span className="field-hint">{hint}</span>
-        <input
-          ref={input}
-          type="text"
-          defaultValue={value}
-          disabled={disabled}
-          autoComplete="off"
-          placeholder="City, address, or place"
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (suggestions.length > 0) setOpen(true)
-          }}
-        />
+        <span className={`place-marker place-marker-${marker}`} aria-hidden="true" />
+        <span className="place-field-text">
+          <span className="field-hint">{hint}</span>
+          <input
+            ref={input}
+            type="text"
+            defaultValue={value}
+            disabled={disabled}
+            autoComplete="off"
+            placeholder="City, address, or place"
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              if (suggestions.length > 0) setOpen(true)
+            }}
+          />
+        </span>
       </label>
 
       {open && suggestions.length > 0 && (

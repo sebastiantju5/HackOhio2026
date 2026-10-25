@@ -103,46 +103,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
 
   return (
     <main className="auth-page">
-      <div className={user ? 'shell shell-profile' : 'shell'}>
-        <header className="topbar">
-          <div className="brand" onClick={onBack} style={{ cursor: 'pointer' }}>
-            <span className="brand-symbol" aria-hidden="true">w.</span>
-            <div className="brand-names">
-              <strong>weatherway</strong>
-              <small>OHIO CORRIDOR DISPATCH</small>
-            </div>
-          </div>
-          <div className="auth-edition">HACKOHIO / 2026</div>
-        </header>
-
-        {!user && <section className="auth-stage" aria-label="WeatherWay Intelligence">
-          <p className="eyebrow">Corridor Forecasting</p>
-          <h1>
-            <span>The road ahead,</span>
-            <em>clarified.</em>
-          </h1>
-          <p className="stage-copy">
-            Sign in to save your car, estimate fuel needs, and find better moments for a food or weather break.
-          </p>
-
-          <div className="auth-features">
-            <div className="auth-feature-item">
-              <span className="feature-dot" />
-              <div>
-                <strong>Point forecast synchronization</strong>
-                <p>Arrival-matched 15-minute weather along I-71, I-75, and I-90.</p>
-              </div>
-            </div>
-            <div className="auth-feature-item">
-              <span className="feature-dot" />
-              <div>
-                <strong>A plan for your car</strong>
-                <p>EPA highway mileage, fuel reserves, and arrival-matched break timing.</p>
-              </div>
-            </div>
-          </div>
-        </section>}
-
+      <div className={user ? 'shell shell-profile' : 'shell shell-auth'}>
         <section className="auth-panel">
           {user ? (
             <div className="signed-in-card">
@@ -151,9 +112,9 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
                   <div className="user-avatar-large">
                     {(user.name || 'User').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
-                  <div>
-                    <p className="eyebrow">Authenticated Operator</p>
-                    <h2>Welcome back, {(user.name || 'there').split(' ')[0]}.</h2>
+                  <div className="signed-in-identity">
+                    <h2>{user.name || 'Your profile'}</h2>
+                    <p>{user.email}</p>
                   </div>
                 </div>
                 <button type="button" className="header-signout-btn" onClick={onLogout}>
@@ -161,74 +122,21 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
                 </button>
               </div>
 
-              <div className="session-details">
-                <div className="detail-row">
-                  <span>Account Email</span>
-                  <strong>{user.email}</strong>
-                </div>
-                <div className="detail-row">
-                  <span>Profile Name</span>
-                  <strong>{user.name}</strong>
-                </div>
-                <div className="detail-row">
-                  <span>Database Session</span>
-                  <span className="status-live-tag">Active (PostgreSQL)</span>
-                </div>
-              </div>
-
-              {vehicleReady ? <VehicleProfile session={session} vehicle={vehicle} onChange={onVehicleChange} loadError={vehicleError} /> : <p role="status">Loading your garage…</p>}
-              <div className="signed-in-actions">
-                <button type="button" className="primary btn-return-planner" onClick={onBack}>
-                  ← Return to Trip Planner
-                </button>
-                <button type="button" className="secondary btn-signout" onClick={onLogout}>
-                  Sign out
-                </button>
-              </div>
+              {vehicleReady ? <VehicleProfile session={session} vehicle={vehicle} onChange={onVehicleChange} loadError={vehicleError} /> : <p role="status">Loading your car…</p>}
             </div>
           ) : (
             <form className="auth-form" onSubmit={onSubmit} noValidate>
-              <div className="form-mode-tabs">
-                <button
-                  type="button"
-                  className={`tab-btn ${!isSignup ? 'active' : ''}`}
-                  onClick={() => switchMode('signin')}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  className={`tab-btn ${isSignup ? 'active' : ''}`}
-                  onClick={() => switchMode('signup')}
-                >
-                  Create Account
-                </button>
-              </div>
-
               <div className="panel-intro">
-                <h2>{isSignup ? 'Create your profile.' : 'Welcome back.'}</h2>
+                <button type="button" className="brand-symbol" onClick={onBack} aria-label="Back to planner">w.</button>
+                <h2>{isSignup ? 'Create your account' : 'Welcome back'}</h2>
                 <p className="panel-copy">
-                  {isSignup
-                    ? 'Enter your name, email, and password to start saving routes.'
-                    : 'Sign in to access your saved Ohio travel corridors.'}
+                  {isSignup ? 'Save your car to plan fuel and breaks.' : 'Sign in to WeatherWay.'}
                 </p>
               </div>
 
-              {!isSignup && (
-                <div className="demo-callout">
-                  <div>
-                    <span className="demo-label">TEST DEMO ACCOUNT</span>
-                    <span className="demo-creds">{DEMO.email} · pass: {DEMO.password}</span>
-                  </div>
-                  <button type="button" className="demo-fill-btn" onClick={fillDemo}>
-                    Auto-fill
-                  </button>
-                </div>
-              )}
-
               {isSignup && (
                 <label className="field">
-                  <span className="field-title">Full Name</span>
+                  <span className="field-title">Name</span>
                   <input
                     name="name"
                     autoComplete="name"
@@ -247,7 +155,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
               )}
 
               <label className="field">
-                <span className="field-title">Email Address</span>
+                <span className="field-title">Email</span>
                 <input
                   name="email"
                   type="email"
@@ -296,15 +204,6 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
                 )}
               </div>
 
-              <label className="remember-option">
-                <input
-                  type="checkbox"
-                  checked={form.remember}
-                  onChange={(event) => updateField('remember', event.target.checked)}
-                />
-                <span>Remember session on this computer</span>
-              </label>
-
               {formError && (
                 <div className="form-error-alert" role="alert">
                   {formError}
@@ -312,7 +211,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
               )}
 
               <button type="submit" className="primary submit-btn" disabled={submitting}>
-                {submitting ? 'Authenticating…' : isSignup ? 'Create Account' : 'Sign In to WeatherWay'}
+                {submitting ? (isSignup ? 'Creating account…' : 'Signing in…') : isSignup ? 'Create account' : 'Sign in'}
               </button>
 
               <p className="auth-switch-prompt">
@@ -322,9 +221,15 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
                   className="link-btn"
                   onClick={() => switchMode(isSignup ? 'signin' : 'signup')}
                 >
-                  {isSignup ? 'Sign in here' : 'Create an account'}
+                  {isSignup ? 'Sign in' : 'Create one'}
                 </button>
               </p>
+
+              {!isSignup && (
+                <button type="button" className="demo-link" onClick={fillDemo}>
+                  Use the demo account
+                </button>
+              )}
             </form>
           )}
         </section>

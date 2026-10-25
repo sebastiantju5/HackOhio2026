@@ -97,8 +97,6 @@ export default function App() {
           onAccount={() => setView('account')}
           onLogout={handleLogout}
           vehicle={vehicle}
-          vehicleError={vehicleError}
-          vehicleReady={vehicleReady}
         />
       )}
     </>

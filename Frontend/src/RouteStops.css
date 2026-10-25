@@ -34,6 +34,11 @@
 .route-venue-pin { width: 30px; height: 30px; background: #245c8b; border-radius: 50%; }
 .route-venue-pin.selected { outline: 3px solid #245c8b; }
 .route-endpoint-pin { width: 28px; height: 28px; border: 2px solid #1d5b43; background: white; color: #1d5b43; border-radius: 50%; }
+.route-checkpoint-pin { display: block; width: 22px; height: 22px; margin: 4px auto 0; background: #ea4335; border: 2px solid #b31412; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 2px 5px #0006; }
+.route-checkpoint-pin::after { content: ''; position: absolute; width: 8px; height: 8px; left: 5px; top: 5px; border-radius: 50%; background: #7a1212; }
+.gm-style-iw:has(.checkpoint-bubble) .gm-style-iw-d { overflow: hidden !important; }
+.checkpoint-bubble { display: flex; align-items: center; gap: 12px; max-width: 280px; color: #202124; font: 14px/1.35 Arial, Helvetica, sans-serif; }
+.checkpoint-bubble button { border: 0; background: transparent; color: #5f6368; font-size: 20px; line-height: 1; cursor: pointer; padding: 0; }
 .route-stop-popup { max-width: 250px; color: #1b1b1e; font: 12px/1.6 var(--font-sans); }
 .route-stop-popup strong { font-size: 14px; }
 .route-stop-popup p { margin: 8px 0 0; }

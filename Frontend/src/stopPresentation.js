@@ -45,8 +45,20 @@ export function stopPopup(stop, index, timeZone) {
   return element
 }
 
-export function venuePopup(place) {
+export function venuePopup(place, onClose) {
   const element = document.createElement('div')
+  if (place.kind === 'restaurant' || place.pinned) {
+    element.className = 'checkpoint-bubble'
+    const address = document.createElement('span')
+    address.textContent = place.name || place.address
+    const close = document.createElement('button')
+    close.type = 'button'
+    close.setAttribute('aria-label', 'Close')
+    close.textContent = '×'
+    close.addEventListener('click', () => onClose?.())
+    element.append(address, close)
+    return element
+  }
   element.className = 'route-stop-popup'
   const title = document.createElement('strong')
   title.textContent = `Nearby option · ${place.name}`

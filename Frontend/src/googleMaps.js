@@ -83,6 +83,44 @@ export function loadGoogleMaps() {
   return loading
 }
 
+function geocodePoint(location) {
+  const lng = typeof location?.lng === 'function' ? location.lng() : location?.lng
+  const lat = typeof location?.lat === 'function' ? location.lat() : location?.lat
+  return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null
+}
+
+function geocodeWithGoogle(request) {
+  return loadGoogleMaps().then(google => new Promise((resolve, reject) => {
+    if (!google?.maps?.Geocoder) {
+      reject(new Error('Google Geocoding is unavailable.'))
+      return
+    }
+    new google.maps.Geocoder().geocode(request, (results, status) => {
+      const match = results?.[0]
+      const coordinates = geocodePoint(match?.geometry?.location)
+      if (status === 'OK' && coordinates) resolve({ coordinates, address: match.formatted_address || '' })
+      else reject(new Error(status || 'Google geocode failed'))
+    })
+  }))
+}
+
+export async function geocodeCheckpoint(place) {
+  const query = [place?.name, place?.address].filter(Boolean).join(', ').trim()
+  if (!query) throw new Error('This place has no address to geocode.')
+  if (!mapsKey() || authFailed) throw new Error('Google Geocoding is unavailable.')
+  const request = { address: query }
+  if (Array.isArray(place.coordinates) && place.coordinates.length === 2 && place.coordinates.every(Number.isFinite)) {
+    const google = await loadGoogleMaps()
+    const [lng, lat] = place.coordinates
+    request.bounds = new google.maps.LatLngBounds(
+      { lat: lat - 0.2, lng: lng - 0.25 },
+      { lat: lat + 0.2, lng: lng + 0.25 },
+    )
+  }
+  const located = await geocodeWithGoogle(request)
+  return { ...located, address: located.address || place.address || query }
+}
+
 export async function geocodeAddress(address) {
   const query = address.trim()
   if (!query) return Promise.reject(new Error('Enter a starting point and a destination.'))
@@ -92,18 +130,8 @@ export async function geocodeAddress(address) {
     try {
       const google = await loadGoogleMaps()
       if (google?.maps?.Geocoder) {
-        const result = await new Promise((resolve, reject) => {
-          new google.maps.Geocoder().geocode({ address: query }, (results, status) => {
-            const location = results?.[0]?.geometry?.location
-            if (status === 'OK' && location) {
-              const name = results[0].formatted_address || query
-              resolve({ name: name.slice(0, 180), coordinates: [location.lng(), location.lat()] })
-            } else {
-              reject(new Error(status || 'Google geocode failed'))
-            }
-          })
-        })
-        return result
+        const located = await geocodeWithGoogle({ address: query })
+        return { name: located.address.slice(0, 180) || query, coordinates: located.coordinates }
       }
     } catch {
       // Fall through to OpenStreetMap Nominatim
@@ -227,13 +255,13 @@ export async function getGoogleRoutes(form, departure, googleApi = null) {
   ))
 }
 
-export async function findStopPlaces(stop, fuelOnly = stop.fuel) {
+export async function findStopPlaces(stop, fuelOnly = stop.fuel, { radius = fuelOnly ? 1500 : 10000, maxResultCount = fuelOnly ? 3 : 5 } = {}) {
   const google = await loadGoogleMaps()
   const { Place, SearchNearbyRankPreference } = await google.maps.importLibrary('places')
   const { places } = await Place.searchNearby({
     fields: ['id', 'displayName', 'formattedAddress', 'location', 'googleMapsURI'],
-    locationRestriction: { center: { lat: stop.coordinates[1], lng: stop.coordinates[0] }, radius: 1500 },
-    includedTypes: [fuelOnly ? 'gas_station' : 'restaurant'], maxResultCount: 3,
+    locationRestriction: { center: { lat: stop.coordinates[1], lng: stop.coordinates[0] }, radius },
+    includedTypes: [fuelOnly ? 'gas_station' : 'restaurant'], maxResultCount,
     rankPreference: SearchNearbyRankPreference.DISTANCE,
   })
   return places.map(place => ({ id: place.id, name: place.displayName, address: place.formattedAddress,

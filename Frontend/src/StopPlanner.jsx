@@ -3,12 +3,25 @@ import { clock, duration } from './format.js'
 import { findStopPlaces, mapsKey } from './googleMaps.js'
 import './StopPlanner.css'
 
-function StopCard({ stop, index, demo, timeZone, onSelect }) {
+function StopCard({ stop, index, demo, timeZone, onSelect, onShowRestaurant }) {
   const [places, setPlaces] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const alive = useRef(true)
   useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
+  useEffect(() => {
+    if (!stop.food || !mapsKey()) return undefined
+    let cancelled = false
+    setBusy(true); setError('')
+    findStopPlaces(stop, false).then(found => {
+      if (cancelled) return
+      const valid = found.filter(place => place.coordinates?.length === 2 && place.coordinates.every(Number.isFinite))
+      setPlaces(valid)
+      if (!valid.length) setError('No restaurants were returned near this meal break. The stop area is still shown on the map.')
+    }).catch(() => { if (!cancelled) setError('Restaurant search is unavailable. The meal stop remains on the map.') })
+      .finally(() => { if (!cancelled) setBusy(false) })
+    return () => { cancelled = true }
+  }, [stop])
   const kind = stop.fuel ? (stop.food ? 'Fuel + food break' : 'Fuel stop') : stop.food ? 'Food break' : 'Weather break'
   const searchUrl = type => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${type} near ${stop.coordinates[1]},${stop.coordinates[0]}`)}`
   async function search(fuel) {
@@ -27,14 +40,15 @@ function StopCard({ stop, index, demo, timeZone, onSelect }) {
     <div className="stop-place-actions">
       {!demo && mapsKey() && <button type="button" disabled={busy} onClick={() => search(stop.fuel)}>{busy ? 'Finding places…' : `Find nearby ${stop.fuel ? 'gas' : 'food'}`}</button>}
       {!demo && mapsKey() && stop.fuel && stop.food && <button type="button" disabled={busy} onClick={() => search(false)}>Find food separately</button>}
-      <a href={searchUrl(stop.fuel ? 'gas stations' : 'restaurants')} target="_blank" rel="noreferrer">Search Google Maps ↗</a>
+      {stop.fuel && <a href={searchUrl('gas stations')} target="_blank" rel="noreferrer">Search Google Maps ↗</a>}
     </div>
     {error && <p role="status">{error}</p>}
-    {places?.length > 0 && <div className="stop-venues"><small>Google Maps · nearby places, detours & opening hours unverified</small>{places.map(place => <a key={place.id} href={place.url || searchUrl(place.name)} target="_blank" rel="noreferrer"><strong>{place.name} ↗</strong><span>{place.address}</span></a>)}</div>}
+    {stop.food && busy && <p role="status">Looking for restaurants near this meal break…</p>}
+    {places?.length > 0 && <div className="stop-venues"><small>Select a restaurant to add its checkpoint on the map. Hours and detours are unverified.</small>{places.map(place => <button type="button" key={place.id} onClick={event => { event.preventDefault(); event.stopPropagation(); onShowRestaurant(place) }}><strong>{place.name}</strong><span>{place.address}</span></button>)}</div>}
   </article>
 }
 
-export default function StopPlanner({ analysis, candidate, vehicle, vehicleError, vehicleReady, session, onAccount, onApply, applied, onSelect }) {
+export default function StopPlanner({ analysis, candidate, vehicle, vehicleError, vehicleReady, session, onAccount, onApply, applied, onSelect, onShowRestaurant, embedded = false }) {
   const [startingFuel, setStartingFuel] = useState(75)
   const [includeFood, setIncludeFood] = useState(true)
   const [plan, setPlan] = useState(null)
@@ -66,8 +80,9 @@ export default function StopPlanner({ analysis, candidate, vehicle, vehicleError
     finally { if (!controller.signal.aborted) setBusy(false) }
   }
 
-  return <section className="stop-planner" aria-labelledby="stops-title">
-    <div className="stop-intro"><div><span className="stop-kicker">A LITTLE ROOM TO PAUSE</span><h3 id="stops-title">Make the weather your break.</h3><p>Compare fuel and food stops for your {clock(candidate.departure, analysis.timeZone)} departure.</p></div><button className="stop-text-button" type="button" onClick={onAccount}>{vehicle ? 'Edit your car ↗' : session ? 'Add your car ↗' : 'Sign in & add a car ↗'}</button></div>
+  const body = <>
+    {!embedded && <div className="stop-intro"><div><span className="stop-kicker">A LITTLE ROOM TO PAUSE</span><h3 id="stops-title">Make the weather your break.</h3><p>Compare fuel and food stops for your {clock(candidate.departure, analysis.timeZone)} departure.</p></div><button className="stop-text-button" type="button" onClick={onAccount}>{vehicle ? 'Edit your car ↗' : session ? 'Add your car ↗' : 'Sign in & add a car ↗'}</button></div>}
+    {embedded && <span className="stop-kicker">PLAN THE STOP</span>}
     <div className="stop-controls">
       <div className="stop-vehicle"><strong>{vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Weather & food breaks'}</strong><span>{vehicle ? [vehicle.mpg && `${vehicle.mpg} highway MPG`, vehicle.tankGallons && `${vehicle.tankGallons} gal tank`, vehicle.mpgSource].filter(Boolean).join(' · ') || vehicle.fuelType : 'Save a gasoline or diesel car to include fuel stops.'}</span>{vehicleError && <span role="status">{vehicleError}</span>}</div>
       {vehicle?.tankGallons && <label className="stop-fuel-label">Starting tank <strong>{startingFuel}%</strong><input aria-label="Starting tank percentage" type="range" min="5" max="100" step="5" value={startingFuel} onChange={e => setStartingFuel(Number(e.target.value))} /></label>}
@@ -81,10 +96,11 @@ export default function StopPlanner({ analysis, candidate, vehicle, vehicleError
         <div className="stop-metrics"><div><span>Break time</span><strong>{duration(plan.totalStopMinutes * 60)}</strong></div><div><span>Arrival · before detours</span><strong>{clock(plan.arrival, analysis.timeZone)}</strong></div><div><span>Higher exposure</span><strong>{plan.baselineHigherMinutes} → {plan.higherMinutes} min</strong></div>{plan.fuel && <div><span>Estimated fuel used</span><strong>{plan.fuel.estimatedGallons} gal</strong></div>}</div>
         {plan.fuel && <p className="stop-fineprint">Planning at {plan.fuel.planningMpg} MPG · {plan.fuel.startingRangeMiles} mi available before reserve · estimated arrival tank {plan.fuel.arrivalTankPercent}%. {plan.fuel.note}</p>}
         {includeFood && !plan.mealIncluded && analysis.routes.find(route => route.id === candidate.routeId)?.durationSeconds >= 5400 && <p className="stop-fineprint">A food break did not fit the best exposure and fuel plan within the stop budget.</p>}
-        {plan.stops.map((stop, index) => <StopCard key={`${candidate.id}-${stop.checkpointIndex}-${stop.durationMinutes}`} stop={stop} index={index} demo={analysis.dataMode === 'demo'} timeZone={analysis.timeZone} onSelect={() => onSelect(plan, index)} />)}
+        {plan.stops.map((stop, index) => <StopCard key={`${candidate.id}-${stop.checkpointIndex}-${stop.durationMinutes}`} stop={stop} index={index} demo={analysis.dataMode === 'demo'} timeZone={analysis.timeZone} onSelect={() => onSelect(plan, index)} onShowRestaurant={place => onShowRestaurant(plan, index, place)} />)}
         {!plan.complete && <p className="stop-error">Forecast coverage is incomplete after these stops. No weather improvement is claimed.</p>}
         <details className="stop-assumptions"><summary>How break timing works</summary><p>Compares up to three stops and 90 minutes total waiting. Food breaks are considered on drives over 90 minutes. A wait is considered before a higher-exposure segment, at a checkpoint whose arrival exposure is below the higher threshold. All later forecast arrival times are shifted.</p><ul>{plan.assumptions.map(note => <li key={note}>{note}</li>)}</ul></details>
       </>}
     </div>}
-  </section>
+  </>
+  return embedded ? <div className="stop-planner is-embedded">{body}</div> : <section className="stop-planner" aria-labelledby="stops-title">{body}</section>
 }

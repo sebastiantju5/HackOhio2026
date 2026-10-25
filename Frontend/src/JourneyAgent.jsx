@@ -1,19 +1,86 @@
 import { useEffect, useRef, useState } from 'react'
 import { clock } from './format.js'
+import { findStopPlaces, mapsKey } from './googleMaps.js'
 import { journeyPlans, planMatchesSelection, stopLabel } from './stopPresentation.js'
-import { defaultFuelGrade, FUEL_GRADES } from './fuelPrices.js'
+import { defaultFuelGrade } from './fuelPrices.js'
 import './JourneyAgent.css'
 
-const SUGGESTIONS = ['Would a food break help avoid the rain?', 'Can I finish with this fuel?', 'Explain the forecast uncertainty.']
+const SUGGESTIONS = ['Would a food break help avoid the rain?', 'Can I finish with this fuel?']
+const FOOD_WORDS = /\b(food|meal|meals|restaurant|restaurants|eat|eating|hungry|lunch|dinner|breakfast|snack)\b/
+const GAS_WORDS = /\b(gas|gasoline|fuel|refuel|refueling|fill up|petrol|diesel)\b/
 
-export default function JourneyAgent({ analysis, candidate, session, vehicle, route, onAccount, onApply, onShowStop, appliedPlan }) {
+function wantsFood(question) {
+  const text = question.toLowerCase()
+  if (/\b(no food|without food|fuel only|gas only)\b/.test(text)) return false
+  return FOOD_WORDS.test(text)
+}
+
+function wantsStopPlan(question) {
+  const text = question.toLowerCase()
+  return wantsFood(text) || wantsGas(text) || ['plan my stop', 'plan a stop', 'plan stops', 'plan my fuel', 'weather stop', 'fuel stop', 'where should i stop', 'where to stop', 'make the weather', 'food or weather', 'show the best computed stop'].some(cue => text.includes(cue))
+}
+
+function includeFood(question) {
+  const text = question.toLowerCase()
+  if (/\b(no food|without food|fuel only|gas only)\b/.test(text)) return false
+  if (wantsFood(text)) return true
+  return !GAS_WORDS.test(text) || /\bweather\b/.test(text)
+}
+
+function wantsGas(question) {
+  return GAS_WORDS.test(question.toLowerCase())
+}
+
+const NEARBY_COPY = {
+  restaurant: {
+    heading: stop => `Restaurants near the mile ${stop.mile} meal break`,
+    loading: 'Looking for restaurants around this meal break.',
+    empty: 'No restaurants were returned near this meal break. The stop area is still shown on the map.',
+    unavailable: 'Restaurant search is unavailable. The meal stop remains on the map.',
+    note: 'Select a restaurant to pin it on the map and add it to your stops. Google Maps results within 10 km. Hours, access, and detours are not part of the stop timing.',
+    search: stop => findStopPlaces(stop, false),
+  },
+  fuel: {
+    heading: stop => `Gas stations near the mile ${stop.mile} ${stop.fuel ? 'fuel stop' : 'stop'}`,
+    loading: 'Looking for gas stations around this stop.',
+    empty: 'No gas stations were returned near this stop. The stop area is still shown on the map.',
+    unavailable: 'Gas station search is unavailable. The stop remains on the map.',
+    note: 'Select a station to pin it on the map and add it to your stops. Google Maps results within 8 km, closest first. Prices, hours, and detours are not part of the stop timing.',
+    search: stop => findStopPlaces(stop, true, { radius: 8000, maxResultCount: 5 }),
+  },
+}
+
+function NearbyPlaces({ kind, stop, stopIndex, plan, focusedVenueId, onShowPlace, onAddStop }) {
+  const copy = NEARBY_COPY[kind]
+  const [places, setPlaces] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!mapsKey()) { setError(`${kind === 'fuel' ? 'Gas station' : 'Restaurant'} search needs the Google Maps key.`); return undefined }
+    let cancelled = false
+    copy.search(stop).then(found => {
+      if (cancelled) return
+      const valid = found.filter(place => place.coordinates?.length === 2 && place.coordinates.every(Number.isFinite)).map(place => ({ ...place, kind }))
+      setPlaces(valid)
+      if (!valid.length) setError(copy.empty)
+    }).catch(() => { if (!cancelled) setError(copy.unavailable) })
+    return () => { cancelled = true }
+  }, [stop, kind, copy])
+  return <div className="journey-restaurants">
+    <strong>{copy.heading(stop)}</strong>
+    {places == null && !error && <p>{copy.loading}</p>}
+    {error && <p>{error}</p>}
+    {places?.map(place => <button type="button" key={place.id} aria-pressed={focusedVenueId === place.id} onClick={event => { event.preventDefault(); event.stopPropagation(); onAddStop?.(plan, stopIndex, place); onShowPlace(plan, stopIndex, place) }}>{place.name}<span>{place.address}</span></button>)}
+    <small>{copy.note}</small>
+  </div>
+}
+
+export default function JourneyAgent({ analysis, candidate, session, vehicle, route, onAccount, onApply, onShowStop, onShowRestaurant, onAddStop, appliedPlan, focusedVenueId }) {
   const [config, setConfig] = useState(null)
   const [question, setQuestion] = useState('')
   const [startingFuel, setStartingFuel] = useState(75)
-  const [budget, setBudget] = useState(60)
-  const [preferCheaperGas, setPreferCheaperGas] = useState(false)
-  const [fuelGradeOverride, setFuelGradeOverride] = useState(null)
-  const fuelGrade = fuelGradeOverride || defaultFuelGrade(vehicle)
+  const budget = 60
+  const preferCheaperGas = false
+  const fuelGrade = defaultFuelGrade(vehicle)
   const [turns, setTurns] = useState([])
   const [busy, setBusy] = useState(false)
   const [pendingTurn, setPendingTurn] = useState(null)
@@ -58,8 +125,41 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
     if (selected?.status === 'planned' && Array.isArray(selected.stops) && selected.stops.length === 0 && selected.stopsModified) {
       onApply(null)
     } else if (selected?.stops?.length > 0) {
-      onApply(selected)
+      const mealIndex = selected.stops.findIndex(stop => stop.food)
+      if (mealIndex >= 0) onShowStop(selected, mealIndex)
+      else onApply(selected)
     }
+  }
+
+  async function planBreak(prompt, signal) {
+    const response = await fetch('/api/trips/stop-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({
+        analysisId: analysis.analysisId,
+        candidateId: candidate.id,
+        vehicle,
+        startingFuel: startingFuel / 100,
+        includeFood: includeFood(prompt),
+      }),
+    })
+    const plan = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(plan.error || 'Could not plan this break.')
+    return { ...plan, journeyPlanId: plan.journeyPlanId || `chat-${candidate.id}` }
+  }
+
+  async function withFoodFallback(prompt, turn, signal) {
+    const options = journeyPlans(turn).filter(plan => planMatchesSelection(plan, analysis.analysisId, candidate, route))
+    const selected = turn.plan || (options.length === 1 ? options[0] : null)
+    const needsBreak = (wantsFood(prompt) && !selected?.stops?.some(stop => stop.food)) || (!selected?.stops?.length && wantsStopPlan(prompt))
+    if (!needsBreak) return turn
+    const planned = await planBreak(prompt, signal)
+    const plannedHasFood = planned.stops?.some(stop => stop.food)
+    if (planMatchesSelection(planned, analysis.analysisId, candidate, route) && (plannedHasFood || !selected?.stops?.length)) {
+      return { ...turn, plan: planned, planOptions: [planned, ...(turn.planOptions || [])] }
+    }
+    return turn
   }
 
   async function ask(event, directQuestion) {
@@ -78,6 +178,20 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
       phase: 'thinking',
       thinkingStatus: 'Thinking & checking your route…',
     })
+
+    const publishTurn = async (turn) => {
+      let next = turn
+      try {
+        next = await withFoodFallback(prompt, turn, controller.signal)
+      } catch (planError) {
+        if (planError.name === 'AbortError') return
+      }
+      if (controller.signal.aborted) return
+      setTurns(current => [...current, next])
+      setPendingTurn(null)
+      applyComputedPlan(next)
+      if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight
+    }
 
     try {
       const response = await fetch('/api/journey/chat', {
@@ -121,6 +235,8 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
         let buffer = ''
         let accumulatedAnswer = ''
         let finalized = false
+        let completedTurn = null
+        let streamError = null
         let currentEventType = ''
         let currentDataLines = []
 
@@ -134,8 +250,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
           if (!parsed || finalized) return
 
           if (parsed.type === 'error' || parsed.error) {
-            setError(parsed.error || 'The journey agent encountered an error.')
-            setPendingTurn(null)
+            streamError = parsed.error || 'The journey agent encountered an error.'
             finalized = true
             return
           }
@@ -176,7 +291,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
             finalized = true
             const payload = parsed.result || parsed.data || parsed
             const finalAnswer = payload.answer || parsed.answer || accumulatedAnswer
-            const completedTurn = {
+            completedTurn = {
               question: prompt,
               candidateId: candidate.id,
               analysisId: analysis.analysisId,
@@ -185,10 +300,6 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
               ...payload,
               answer: finalAnswer,
             }
-            setTurns(current => [...current, completedTurn])
-            setPendingTurn(null)
-            applyComputedPlan(completedTurn)
-            scrollBottom()
             return
           }
         }
@@ -264,41 +375,59 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
         }
         dispatchCurrentEvent()
 
-        if (!finalized && accumulatedAnswer && !controller.signal.aborted) {
-          finalized = true
-          const completedTurn = {
+        if (streamError) throw new Error(streamError)
+        if (completedTurn && !controller.signal.aborted) {
+          await publishTurn(completedTurn)
+        } else if (!finalized && accumulatedAnswer && !controller.signal.aborted) {
+          await publishTurn({
             question: prompt,
             answer: accumulatedAnswer,
             candidateId: candidate.id,
             analysisId: analysis.analysisId,
             model: config?.model || 'openrouter/free',
             dataMode: analysis.dataMode,
-          }
-          setTurns(current => [...current, completedTurn])
-          setPendingTurn(null)
-          applyComputedPlan(completedTurn)
+          })
         }
       } else {
         const data = await response.json().catch(() => ({}))
         if (!controller.signal.aborted) {
-          const completedTurn = {
+          await publishTurn({
             question: prompt,
             candidateId: candidate.id,
             analysisId: analysis.analysisId,
             model: data.model || config?.model || 'openrouter/free',
             dataMode: data.dataMode || analysis.dataMode,
             ...data,
-          }
-          setTurns(current => [...current, completedTurn])
-          setPendingTurn(null)
-          applyComputedPlan(completedTurn)
+          })
         }
       }
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        setError(err.message)
-        setPendingTurn(null)
+      if (err.name === 'AbortError') return
+      if (wantsStopPlan(prompt) && !controller.signal.aborted) {
+        try {
+          const selected = await planBreak(prompt, controller.signal)
+          const turn = {
+            question: prompt,
+            answer: selected.reason || 'Here is the computed break for this departure.',
+            citations: [],
+            trace: [],
+            dataMode: analysis.dataMode,
+            model: 'computed break',
+            usage: { total_tokens: 0 },
+            plan: selected,
+            planOptions: [selected],
+          }
+          setTurns(current => [...current, turn])
+          setPendingTurn(null)
+          applyComputedPlan(turn)
+          return
+        } catch (planError) {
+          if (planError.name !== 'AbortError') setError(planError.message)
+          return
+        }
       }
+      setError(err.message)
+      setPendingTurn(null)
     } finally {
       if (!controller.signal.aborted) {
         setBusy(false)
@@ -315,7 +444,6 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
           <h3 id="journey-title">Ask the road ahead.</h3>
           <p>Ask about your {clock(candidate.departure, analysis.timeZone)} departure. Answers use this trip’s forecast, computed stop options and cited travel guidance.</p>
         </div>
-        <span className="journey-tag">JOURNEY AGENT · RAG</span>
       </div>
 
       {!session ? (
@@ -348,72 +476,14 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
             ) : (
               <p>No saved car. Weather and food questions work; fuel estimates need a car in Profile.</p>
             )}
-            <label>
-              Maximum total break time
-              <select
-                aria-label="Journey stop budget"
-                value={budget}
-                disabled={busy}
-                onChange={e => {
-                  if (appliedPlan?.journeyPlanId) onApply(null)
-                  setBudget(Number(e.target.value))
-                }}
-              >
-                {[0, 15, 30, 45, 60, 90].map(minutes => (
-                  <option key={minutes} value={minutes}>{minutes} minutes</option>
-                ))}
-              </select>
-            </label>
-            <label className="journey-price-choice">
-              <span>
-                <input
-                  type="checkbox"
-                  checked={preferCheaperGas}
-                  disabled={busy}
-                  onChange={event => {
-                    if (appliedPlan?.journeyPlanId) onApply(null)
-                    setPreferCheaperGas(event.target.checked)
-                  }}
-                />
-                {' '}Prefer cheaper gas
-              </span>
-              <small>Compare reported prices at planned fuel stops. Availability varies.</small>
-            </label>
-            <label>
-              Fuel grade for price comparison
-              <select
-                aria-label="Journey fuel grade"
-                disabled={busy || !preferCheaperGas}
-                value={fuelGrade}
-                onChange={event => {
-                  if (appliedPlan?.journeyPlanId) onApply(null)
-                  setFuelGradeOverride(event.target.value)
-                }}
-              >
-                {Object.entries(FUEL_GRADES).map(([value, label]) => (
-                  <option value={value} key={value}>{label}</option>
-                ))}
-              </select>
-            </label>
           </div>
 
           <div className="journey-suggestions">
             {SUGGESTIONS.map(text => (
-              <button key={text} type="button" disabled={busy} onClick={() => setQuestion(text)}>
+              <button key={text} type="button" disabled={busy} onClick={() => ask(null, text)}>
                 {text}
               </button>
             ))}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                if (appliedPlan?.journeyPlanId) onApply(null)
-                setPreferCheaperGas(true)
-                setQuestion('Plan my needed refueling stops and help me compare cheaper gas options near them.')
-              }}
-            >
-              Find cheaper gas for my trip
-            </button>
           </div>
 
           <button
@@ -438,7 +508,6 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
               rows="3"
             />
             <div className="journey-submit">
-              <small>Your question, selected trip and fuel specs are sent to OpenRouter. Account identity is excluded.</small>
               <button type="submit" disabled={busy || !config?.configured || question.trim().length < 3}>
                 {busy ? 'Checking trip & guidance…' : 'Ask journey agent →'}
               </button>
@@ -450,19 +519,15 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
       {error && <p className="journey-error" role="alert">{error}</p>}
 
       <div
-        className="journey-conversation"
+        className={`journey-conversation ${turns.length === 0 && !pendingTurn ? 'is-empty' : ''}`}
         ref={conversationRef}
         aria-live="polite"
         aria-busy={busy}
       >
-        <div className="journey-scroll-header">
-          <span>Model · {config?.model || 'openrouter/free'}</span>
-          <span>{analysis.dataMode === 'demo' ? 'Simulated Trip' : 'Live Forecast'}</span>
-        </div>
-
-        {turns.length === 0 && !busy && !pendingTurn && (
-          <div className="journey-empty-state">
-            <p>Ask a question above or tap a quick button to plan your stops.</p>
+        {(turns.length > 0 || pendingTurn) && (
+          <div className="journey-scroll-header">
+            <span>Model · {config?.model || 'openrouter/free'}</span>
+            <span>{analysis.dataMode === 'demo' ? 'Simulated Trip' : 'Live Forecast'}</span>
           </div>
         )}
 
@@ -494,12 +559,46 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
                               <button
                                 type="button"
                                 key={stopIndex}
-                                onClick={() => onShowStop(plan, stopIndex)}
+                                onClick={() => { onAddStop?.(plan, stopIndex); onShowStop(plan, stopIndex) }}
                               >
                                 Zoom to {stopLabel(stop, stopIndex, analysis.timeZone)} ↑
                               </button>
                             ))}
                           </div>
+                          {plan.stops.map((stop, stopIndex) => stop.food && (
+                            <NearbyPlaces
+                              kind="restaurant"
+                              key={`${plan.journeyPlanId}-${stopIndex}-food`}
+                              stop={stop}
+                              stopIndex={stopIndex}
+                              plan={plan}
+                              focusedVenueId={focusedVenueId}
+                              onShowPlace={onShowRestaurant}
+                              onAddStop={onAddStop}
+                            />
+                          ))}
+                          {wantsFood(turn.question) && !plan.stops.some(stop => stop.food) && (
+                            <p>A food break did not fit this stop budget, so no nearby restaurants are listed.</p>
+                          )}
+                          {wantsGas(turn.question) && (
+                            <>
+                              {!plan.stops.some(stop => stop.fuel) && (
+                                <p>Your tank covers this drive, so no fuel stop was required. You can still pick a gas station near one of your planned stops.</p>
+                              )}
+                              {plan.stops.map((stop, stopIndex) => (stop.fuel || !plan.stops.some(item => item.fuel)) && (
+                                <NearbyPlaces
+                                  kind="fuel"
+                                  key={`${plan.journeyPlanId}-${stopIndex}-fuel`}
+                                  stop={stop}
+                                  stopIndex={stopIndex}
+                                  plan={plan}
+                                  focusedVenueId={focusedVenueId}
+                                  onShowPlace={onShowRestaurant}
+                                  onAddStop={onAddStop}
+                                />
+                              ))}
+                            </>
+                          )}
                           <button
                             type="button"
                             onClick={() => onApply(appliedPlan?.journeyPlanId === plan.journeyPlanId ? null : plan)}

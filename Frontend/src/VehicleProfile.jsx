@@ -108,9 +108,8 @@ export default function VehicleProfile({ session, vehicle, onChange, loadError }
   }
 
   return <section className="vehicle-profile" aria-labelledby="vehicle-title">
-    <p className="eyebrow">YOUR GARAGE</p>
-    <h3 id="vehicle-title">A better plan for your car.</h3>
-    <p>Look up the exact engine and transmission. Highway MPG is saved from that FuelEconomy.gov record, and tank size is saved when the record publishes a driving range.</p>
+    <h3 id="vehicle-title">Your car</h3>
+    <p>Used to estimate fuel cost and plan fuel stops.</p>
     {loadError && !vehicle && <p role="status">{loadError}</p>}
     <form onSubmit={save}>
       <fieldset disabled={busy}>
@@ -119,20 +118,20 @@ export default function VehicleProfile({ session, vehicle, onChange, loadError }
           <label>Make<input required maxLength="100" value={form.make} onChange={e => edit('make', e.target.value)} placeholder="Toyota" /></label>
           <label>Model<input required maxLength="100" value={form.model} onChange={e => edit('model', e.target.value)} placeholder="Camry" /></label>
         </div>
-        <button type="button" className="vehicle-secondary" onClick={lookupMpg} disabled={!form.year || !form.make.trim() || !form.model.trim()}>Look up EPA mileage ↗</button>
+        <button type="button" className="vehicle-secondary" onClick={lookupMpg} disabled={!form.year || !form.make.trim() || !form.model.trim()}>Look up mileage</button>
         {options.length > 1 && <label>Engine & transmission<select aria-label="Engine & transmission" value={form.epaId || ''} onChange={e => fetchRating(e.target.value)}><option value="" disabled>Choose a configuration</option>{options.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>}
         {options.length > 1 && !form.epaId && <p className="vehicle-source">Choose the engine and transmission to enable saving.</p>}
         {form.mpg && <div className="vehicle-specs" aria-live="polite">
           <p>Highway MPG<strong>{form.mpg}</strong></p>
           <p>Tank size<strong>{form.tankGallons ? `${form.tankGallons} US gal` : 'Not published'}</strong></p>
         </div>}
-        {form.mpg && <p className="vehicle-source">{form.mpgSource}{form.tankGallons ? ` · ${form.tankSource}` : ''} · {form.configuration} · {form.fuelType}</p>}
-        {form.mpg && !form.tankGallons && <p className="vehicle-source">This FuelEconomy.gov record has highway MPG, but no driving range, so a tank size cannot be calculated. Fuel-range stops stay off for this car.</p>}
+        {form.mpg && <p className="vehicle-source">{form.configuration} · {form.fuelType}</p>}
+        {form.mpg && !form.tankGallons && <p className="vehicle-source">No published driving range for this car, so fuel-range stops stay off.</p>}
         <div className="vehicle-actions"><button className="vehicle-primary" type="submit" disabled={!form.epaId}>{busy ? 'Working…' : 'Save car'}</button>{vehicle && <button className="vehicle-secondary" type="button" onClick={remove}>Remove car</button>}</div>
       </fieldset>
     </form>
     {error && <p className="vehicle-error" role="alert">{error}</p>}
     {message && <p className="vehicle-success" role="status">{message}</p>}
-    <p className="vehicle-source"><a href="https://www.fueleconomy.gov/feg/Find.do?action=sbsSelect" target="_blank" rel="noreferrer">EPA / FuelEconomy.gov</a> · Gasoline and diesel only. Real mileage varies.</p>
+    <p className="vehicle-source">Highway MPG from <a href="https://www.fueleconomy.gov/feg/Find.do?action=sbsSelect" target="_blank" rel="noreferrer">FuelEconomy.gov</a>. Gas and diesel only.</p>
   </section>
 }
