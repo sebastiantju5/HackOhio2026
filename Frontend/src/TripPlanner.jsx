@@ -90,7 +90,7 @@ function Metric({ label, children }) {
   return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
 }
 
-export default function TripPlanner({ session: _session, onAccount: _onAccount, onLogout: _onLogout, vehicle, vehicleError: _vehicleError, vehicleReady }) {
+export default function TripPlanner({ session, onAccount, onLogout: _onLogout, vehicle, vehicleError, vehicleReady }) {
   const [form, setForm] = useState(defaults)
   const [analysis, setAnalysis] = useState(null)
   const [routeId, setRouteId] = useState(null)
@@ -333,15 +333,47 @@ export default function TripPlanner({ session: _session, onAccount: _onAccount, 
 
             <div className="header-badges-wrap">
               {recommended && (
-                <button type="button" className="bone-rec-badge" onClick={useRecommendation}>
-                  <span className="badge-kicker">OPTIMAL: {clock(recommended.departureTime)} ET</span>
+                <button type="button" className="pinned-pill-tag" onClick={useRecommendation} title="Jump to optimal departure">
+                  OPTIMAL: {clock(recommended.departure, analysis?.timeZone)} ET
                 </button>
               )}
-              <span className="bone-meta-pill">
-                <i className="status-dot" /> {form.mode === 'live' ? 'LIVE FORECAST' : 'SIMULATED'}
+              <span className={`data-mode-tag ${form.mode === 'live' ? 'live' : ''}`}>
+                <i /> {form.mode === 'live' ? 'LIVE FORECAST' : 'SIMULATED'}
               </span>
             </div>
           </div>
+
+          {/* Compared Alternatives */}
+          {form.alternatives && analysis?.routes?.length > 1 && (
+            <div className="route-options-bar" role="tablist" aria-label="Route alternatives">
+              {analysis.routes.map(r => {
+                const bestForR = analysis.candidates
+                  .filter(c => c.routeId === r.id)
+                  .sort((a, b) => a.weightedExposure - b.weightedExposure)[0]
+                const active = r.id === routeId
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    role="tab"
+                    aria-pressed={active}
+                    aria-selected={active}
+                    onClick={() => {
+                      setRouteId(r.id)
+                      setDepartureIndex(0)
+                    }}
+                  >
+                    <span className="route-choice-dot" />
+                    <strong>{r.name}</strong>
+                    <span>{miles(r.distanceMeters)} mi · {duration(r.durationSeconds)}</span>
+                    {bestForR && LEVELS[bestForR.level] && (
+                      <span className="route-choice-exposure">· {LEVELS[bestForR.level].label}</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Map Layout */}
           <div className="bone-split-layout" ref={mapRegion}>
@@ -355,69 +387,72 @@ export default function TripPlanner({ session: _session, onAccount: _onAccount, 
             />
           </div>
 
-          {/* Metrics & Scrubber Details */}
-          <div className="bone-details-flow">
-            {/* Interactive Timeline Scrubber */}
-            <div className="bone-scrubber-module">
-              <DepartureScrubber
-                candidates={candidates}
-                selectedIndex={departureIndex}
-                recommendedId={recommended?.id}
-                onSelect={setDepartureIndex}
-              />
-            </div>
+          {/* Quick Metrics Bar */}
+          <div className="bone-trip-metrics">
+            <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
+            <Metric label={activePlan ? 'Arrival with breaks' : 'Estimated Arrival'}>
+              {displayCandidate?.arrival ? `${clock(displayCandidate.arrival, analysis?.timeZone)} ET` : '—'}
+            </Metric>
+            <Metric label="Higher Exposure">
+              {displayCandidate ? (displayCandidate.higherMinutes > 0 ? `${displayCandidate.higherMinutes} min` : '0 min') : '—'}
+            </Metric>
+            <Metric label="Peak Condition">
+              {displayCandidate?.level && LEVELS[displayCandidate.level] ? LEVELS[displayCandidate.level].label : '—'}
+            </Metric>
+          </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="bone-metrics-row">
-              <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
-              <Metric label={activePlan ? 'Arrival with breaks' : 'Estimated Arrival'}>
-                {candidate ? `${clock(displayCandidate.arrival)} ET` : '—'}
-              </Metric>
-              <Metric label="Exposure Index">
-                {candidate ? `${Math.round(displayCandidate.exposureScore * 100)} / 100` : '—'}
-              </Metric>
-              <Metric label="Peak Condition">
-                {candidate ? LEVELS[displayCandidate.worstLevel].label : '—'}
-              </Metric>
-            </div>
+          {/* Interactive Timeline Scrubber */}
+          <div className="bone-scrubber-section">
+            <DepartureScrubber
+              candidates={candidates}
+              selectedIndex={departureIndex}
+              recommendedId={recommended?.id}
+              onChange={setDepartureIndex}
+              timeZone={analysis?.timeZone}
+            />
 
-            {/* Weather-Aware Break Stops Module */}
+            {recommended && (
+              <div className="bone-rec-bar">
+                <span className="rec-star-quiet" aria-hidden="true">★</span>
+                <div className="rec-bar-content">
+                  <span className="rec-kicker">RECOMMENDED DEPARTURE WINDOW</span>
+                  <h4>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</h4>
+                  <p>
+                    {analysis.recommendation?.minutesSaved > 0
+                      ? `Saves ${analysis.recommendation.minutesSaved} minutes of storm exposure compared to earlier timing.`
+                      : 'Offers the lowest risk profile and smoothest conditions along the Ohio corridor.'}
+                  </p>
+                </div>
+                <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
+                  Jump to {clock(recommended.departure, analysis?.timeZone)}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Weather-Aware Break Stops Module */}
+          {analysis && candidate && (
             <StopPlanner
               analysis={analysis}
               candidate={candidate}
               vehicle={vehicle}
+              vehicleError={vehicleError}
               vehicleReady={vehicleReady}
-              onPlanChange={setStopPlan}
-              onScrollToMap={() => mapRegion.current?.scrollIntoView({ behavior: 'smooth' })}
+              session={session}
+              onAccount={onAccount}
+              onApply={setStopPlan}
+              applied={Boolean(activePlan)}
+              onSelect={(cpIndex) => {
+                setSelectedPoint(cpIndex)
+                mapRegion.current?.scrollIntoView({ behavior: 'smooth' })
+              }}
             />
+          )}
 
-            {/* Compared Alternatives */}
-            {form.alternatives && analysis?.routes?.length > 1 && (
-              <div className="alternatives-summary-callout">
-                <h4>Route Alternatives Analyzed</h4>
-                <div className="alternatives-chips">
-                  {analysis.routes.map(r => {
-                    const bestForR = analysis.candidates
-                      .filter(c => c.routeId === r.id)
-                      .sort((a, b) => a.exposureScore - b.exposureScore)[0]
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        className={`alt-chip ${r.id === routeId ? 'active' : ''}`}
-                        onClick={() => {
-                          setRouteId(r.id)
-                          setDepartureIndex(0)
-                        }}
-                      >
-                        <span className="alt-title">{r.title}</span>
-                        <span className="alt-meta">{miles(r.distanceMeters)} mi · best score {Math.round(bestForR?.exposureScore * 100)}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+          {/* Card Footer */}
+          <div className="bone-card-footer">
+            <span>CORRIDOR WEATHER DISPATCH &middot; OHIO INTERSTATE SYSTEM</span>
+            <span>5-MIN STEP FORECAST SAMPLING</span>
           </div>
         </section>
       </main>

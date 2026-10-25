@@ -41,10 +41,13 @@ export default function StopPlanner({ analysis, candidate, vehicle, vehicleError
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const request = useRef(null)
+
   useEffect(() => {
-    request.current?.abort(); setPlan(null); setError(''); setBusy(false); onApply(null)
+    request.current?.abort(); setPlan(null); setError(''); setBusy(false); onApply?.(null)
     return () => request.current?.abort()
-  }, [analysis.analysisId, candidate.id, vehicle, startingFuel, includeFood, onApply])
+  }, [analysis?.analysisId, candidate?.id, vehicle, startingFuel, includeFood, onApply])
+
+  if (!analysis || !candidate) return null
 
   async function generate() {
     request.current?.abort()

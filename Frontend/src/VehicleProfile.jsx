@@ -8,7 +8,7 @@ export async function vehicleRequest(token, method = 'GET', body) {
     method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
-  const data = await response.json()
+  const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || 'Could not access your vehicle.')
   return data.vehicle || null
 }

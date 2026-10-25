@@ -830,6 +830,13 @@
   font-family: var(--font-mono);
   letter-spacing: 0.3px;
   text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pinned-pill-tag:hover {
+  opacity: 0.88;
 }
 
 .data-mode-tag {
@@ -897,6 +904,15 @@
 .route-options-bar button[aria-pressed=true] .route-choice-dot {
   background: var(--terracotta);
   border-color: var(--terracotta);
+}
+
+.route-choice-exposure {
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+.route-options-bar button[aria-pressed=true] .route-choice-exposure {
+  color: var(--terracotta);
 }
 
 /* ==========================================================================
