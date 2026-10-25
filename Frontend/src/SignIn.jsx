@@ -102,10 +102,6 @@ export default function SignIn({ session, onLogin, onLogout, onBack }) {
 
   return (
     <main className="auth-page">
-      <button type="button" className="auth-back-nav" onClick={onBack}>
-        ← Back to trip planner
-      </button>
-
       <div className="shell">
         <header className="topbar">
           <div className="brand" onClick={onBack} style={{ cursor: 'pointer' }}>

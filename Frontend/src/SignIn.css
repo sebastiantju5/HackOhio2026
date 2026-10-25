@@ -3,8 +3,8 @@
    ========================================================================== */
 
 .auth-page {
-  min-height: 100svh;
-  padding: 32px 20px 60px;
+  min-height: auto;
+  padding: 8px 20px 60px;
   background: var(--terracotta);
   color: #ffffff;
   font-family: var(--font-sans);
@@ -39,7 +39,7 @@
 .auth-page .shell {
   width: 100%;
   max-width: 980px;
-  margin-top: 40px;
+  margin-top: 8px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto 1fr;

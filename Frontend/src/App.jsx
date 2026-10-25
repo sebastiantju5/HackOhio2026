@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import SignIn from './SignIn.jsx'
+import TopBar from './TopBar.jsx'
 import TripPlanner from './TripPlanner.jsx'
 import { readStoredSession, storeSession, clearSession, verifySession, logoutUser } from './auth.js'
+import './TripPlanner.css'
 
 export default function App() {
   const [view, setView] = useState('planner')
@@ -39,28 +41,32 @@ export default function App() {
   async function handleLogout() {
     const token = session?.token
     setSession(null)
+    setView('planner')
     clearSession()
     if (token) {
       await logoutUser(token)
     }
   }
 
-  if (view === 'account') {
-    return (
-      <SignIn
-        session={session}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-        onBack={() => setView('planner')}
-      />
-    )
-  }
-
   return (
-    <TripPlanner
-      session={session}
-      onAccount={() => setView('account')}
-      onLogout={handleLogout}
-    />
+    <>
+      <TopBar
+        view={view}
+        signedIn={Boolean(session?.user)}
+        onHome={() => setView('planner')}
+        onProfile={() => setView('account')}
+        onSignOut={handleLogout}
+      />
+      {view === 'account' ? (
+        <SignIn
+          session={session}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onBack={() => setView('planner')}
+        />
+      ) : (
+        <TripPlanner />
+      )}
+    </>
   )
 }

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import RouteMap from './RouteMap.jsx'
 import DepartureScrubber from './DepartureScrubber.jsx'
-import CheckpointPanel from './CheckpointPanel.jsx'
 import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
 import PlaceField from './PlaceField.jsx'
 import { geocodeAddress } from './googleMaps.js'
@@ -17,11 +16,42 @@ const PLACES = [
   { name: 'Mansfield, OH', coordinates: [-82.5154, 40.7584] },
 ]
 
+function windowLabel(minutes) {
+  if (!minutes) return 'Exact time'
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours && rest) return `${hours}h ${rest}m`
+  if (hours === 1) return '1 hour'
+  if (hours) return `${hours} hours`
+  return `${minutes} min`
+}
+
+function departureRange(leave, minutes) {
+  const center = new Date(fromWallInput(leave)).getTime()
+  return {
+    start: new Date(center - minutes * 60000).toISOString(),
+    end: new Date(center + minutes * 60000).toISOString(),
+  }
+}
+
+function describeWindow(leave, minutes) {
+  try {
+    const range = departureRange(leave, minutes)
+    if (!minutes) return `Exact · ${clock(range.start)}`
+    const span = day(range.start) === day(range.end)
+      ? `${clock(range.start)}–${clock(range.end)}`
+      : `${day(range.start)} ${clock(range.start)} – ${day(range.end)} ${clock(range.end)}`
+    return `${windowLabel(minutes)} · ${span}`
+  } catch {
+    return windowLabel(minutes)
+  }
+}
+
 function defaults() {
   const start = new Date(Math.ceil((Date.now() + 30 * 60000) / 900000) * 900000)
   return {
     origin: 'Columbus, OH', destination: 'Cleveland, OH', originPlace: PLACES[0], destinationPlace: PLACES[1],
-    start: toWallInput(start), end: toWallInput(new Date(start.getTime() + 7200000)), alternatives: true, mode: 'demo',
+    leave: toWallInput(new Date(start.getTime() + 3600000)), windowMinutes: 60, alternatives: true, mode: 'demo',
   }
 }
 
@@ -40,10 +70,11 @@ async function getAnalysis(form, signal) {
   if (!form.originPlace?.coordinates || !form.destinationPlace?.coordinates) {
     throw new Error('Choose a starting point and a destination.')
   }
+  const range = departureRange(form.leave, Number(form.windowMinutes))
   const response = await fetch('/api/trips/analyze', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
     body: JSON.stringify({ origin: form.originPlace, destination: form.destinationPlace,
-      departureStart: fromWallInput(form.start), departureEnd: fromWallInput(form.end), timeZone: TIME_ZONE,
+      departureStart: range.start, departureEnd: range.end, timeZone: TIME_ZONE,
       includeAlternatives: form.alternatives, dataMode: form.mode }),
   })
   const data = await response.json().catch(() => ({}))
@@ -56,16 +87,16 @@ function Metric({ label, children }) {
   return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
 }
 
-export default function TripPlanner({ session, onAccount, onLogout }) {
+export default function TripPlanner() {
   const [form, setForm] = useState(defaults)
   const [analysis, setAnalysis] = useState(null)
   const [routeId, setRouteId] = useState(null)
   const [departureIndex, setDepartureIndex] = useState(0)
-  const [selectedPoint, setSelectedPoint] = useState(3)
+  const [_selectedPoint, setSelectedPoint] = useState(3)
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
-  const [routingProvider, setRoutingProvider] = useState('OSRM')
+  const [_routingProvider, setRoutingProvider] = useState('OSRM')
   const request = useRef(null)
   const initialForm = useRef(form)
 
@@ -147,10 +178,7 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
   const route = analysis?.routes.find(item => item.id === routeId)
   const candidates = analysis?.candidates.filter(item => item.routeId === routeId) || []
   const candidate = candidates[departureIndex] || candidates[0]
-  const pointIndex = Math.min(selectedPoint, (route?.checkpoints.length || 1) - 1)
   const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
-  const source = analysis?.sources.find(item => item.model)
-  const baseline = analysis?.candidates.find(item => item.routeId === analysis.routes[0].id)
 
   function useRecommendation() {
     if (!recommended) return
@@ -160,41 +188,6 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
 
   return (
     <div className="planner-app">
-      {/* Floating Capsule Navbar */}
-      <div className="capsule-wrapper">
-        <nav className="capsule-nav">
-          <a className="capsule-brand" href="#main">
-            <div className="capsule-dot">w</div>
-            <span>WeatherWay Dispatch</span>
-          </a>
-
-          <div className="capsule-links">
-            <span className="capsule-tag-ohio">OHIO CORRIDORS</span>
-            <span className="edition-badge">HACKOHIO / 2026</span>
-          </div>
-
-          <div className="capsule-user-section">
-            {session?.user ? (
-              <div className="user-capsule-badge">
-                <button className="user-profile-button" onClick={onAccount} title={`Signed in as ${session.user.email}`}>
-                  <span className="user-avatar-pip">
-                    {(session.user.name || 'User').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="user-name-txt">{(session.user.name || 'User').split(' ')[0]}</span>
-                </button>
-                <button className="user-logout-button" onClick={onLogout} title="Sign out">
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <button className="capsule-auth-btn" onClick={onAccount}>
-                Sign in ↗
-              </button>
-            )}
-          </div>
-        </nav>
-      </div>
-
       {/* Editorial Hero Stage */}
       <header className="hero-stage">
         <div className="hero-kicker">OHIO HIGHWAY WEATHER CORRIDORS</div>
@@ -203,23 +196,32 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
         </h1>
         <p className="hero-sub">
           {form.mode === 'live'
-            ? 'Type any starting point and destination. Forecasts follow the drive for trips up to four hours.'
+            ? 'Type any starting point and destination. Forecasts follow the drive.'
             : 'A simulated Columbus to Cleveland drive. Switch to Live forecast to search any place.'}
         </p>
 
-        {/* Mode Selector Pill Strip */}
-        <div className="planner-mode-bar">
-          <fieldset className="capsule-mode-picker" disabled={busy}>
-            <legend className="sr-only">Data mode</legend>
-            <button type="button" aria-pressed={form.mode === 'demo'} onClick={() => changeMode('demo')}>
-              <span className="mode-dot" aria-hidden="true" />
+        {/* Dedicated Mode Selector Bar */}
+        <div className="planner-mode-bar" role="toolbar" aria-label="Forecast data mode">
+          <div className="capsule-mode-picker">
+            <button
+              type="button"
+              className={form.mode === 'demo' ? 'active' : ''}
+              aria-pressed={form.mode === 'demo'}
+              onClick={() => changeMode('demo')}
+            >
+              <span className="mode-dot demo" />
               Simulated
             </button>
-            <button type="button" aria-pressed={form.mode === 'live'} onClick={() => changeMode('live')}>
-              <span className="mode-dot live" aria-hidden="true" />
+            <button
+              type="button"
+              className={form.mode === 'live' ? 'active' : ''}
+              aria-pressed={form.mode === 'live'}
+              onClick={() => changeMode('live')}
+            >
+              <span className="mode-dot live" />
               Live forecast
             </button>
-          </fieldset>
+          </div>
         </div>
 
         {/* Clean Integrated Trip Capsule Form */}
@@ -230,8 +232,8 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
                 <div className="place-field-wrapper">
                   <label className="capsule-input-pair">
                     <span className="field-hint">From</span>
-                    <select value={form.origin} disabled onChange={event => update('origin', event.target.value)}>
-                      {PLACES.map(place => <option key={place.name} value={place.name}>{place.name}</option>)}
+                    <select value={form.origin} disabled>
+                      {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
                     </select>
                   </label>
                 </div>
@@ -239,8 +241,8 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
                 <div className="place-field-wrapper">
                   <label className="capsule-input-pair">
                     <span className="field-hint">To</span>
-                    <select value={form.destination} disabled onChange={event => update('destination', event.target.value)}>
-                      {PLACES.map(place => <option key={place.name} value={place.name}>{place.name}</option>)}
+                    <select value={form.destination} disabled>
+                      {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
                     </select>
                   </label>
                 </div>
@@ -259,13 +261,28 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
           <div className="capsule-times">
             <label className="capsule-time-input">
               <span className="field-hint">Leave</span>
-              <input type="datetime-local" required value={form.start} disabled={busy} onChange={event => update('start', event.target.value)} />
+              <input type="datetime-local" required value={form.leave} disabled={busy} onChange={event => update('leave', event.target.value)} />
             </label>
-            <span className="capsule-dash" aria-hidden="true">–</span>
-            <label className="capsule-time-input">
-              <span className="field-hint">Until</span>
-              <input type="datetime-local" required value={form.end} disabled={busy} onChange={event => update('end', event.target.value)} />
-            </label>
+            <div className="capsule-window">
+              <span className="field-hint">Before & after</span>
+              <div className="capsule-window-body">
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  step="15"
+                  value={form.windowMinutes}
+                  disabled={busy}
+                  aria-label="Departure window slider"
+                  aria-valuemin={0}
+                  aria-valuemax={360}
+                  aria-valuenow={form.windowMinutes}
+                  aria-valuetext={form.windowMinutes ? `${windowLabel(form.windowMinutes)} before and after` : 'Exact leave time'}
+                  onChange={event => update('windowMinutes', Number(event.target.value))}
+                />
+                <span className="window-size">{describeWindow(form.leave, form.windowMinutes)}</span>
+              </div>
+            </div>
           </div>
 
           <div className="capsule-v-divider" aria-hidden="true" />
@@ -302,107 +319,82 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
 
             <div className="header-badges-wrap">
               {recommended && (
-                <span className="pinned-pill-tag">Optimal: {clock(recommended.departure, analysis?.timeZone)} ET</span>
+                <button type="button" className="bone-rec-badge" onClick={useRecommendation}>
+                  <span className="badge-kicker">OPTIMAL: {clock(recommended.departureTime)} ET</span>
+                </button>
               )}
-              <span className={`data-mode-tag ${analysis?.dataMode === 'live' ? 'live' : ''}`}>
-                <i />{analysis?.dataMode === 'live' ? 'LIVE FORECAST' : 'SIMULATED'}
+              <span className="bone-meta-pill">
+                <i className="status-dot" /> {form.mode === 'live' ? 'LIVE FORECAST' : 'SIMULATED'}
               </span>
             </div>
           </div>
 
-          {/* Alternative Routes Selector */}
-          {analysis && analysis.routes.length > 1 && (
-            <div className="route-options-bar" aria-label="Choose route">
-              {analysis.routes.map(item => (
-                <button type="button" key={item.id} aria-pressed={routeId === item.id} onClick={() => { setRouteId(item.id); setDepartureIndex(0); setSelectedPoint(0) }}>
-                  <span className="route-choice-dot" />
-                  <strong>{item.name}</strong>
-                  <span>{duration(item.durationSeconds)} · {miles(item.distanceMeters)} mi</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Map & Checkpoint Split */}
+          {/* Map Layout */}
           <div className="bone-split-layout">
-            <RouteMap route={route} candidate={candidate} selectedPoint={pointIndex} onSelect={setSelectedPoint} origin={analysis?.origin.name} destination={analysis?.destination.name} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
-            <CheckpointPanel checkpoint={route?.checkpoints[pointIndex]} condition={candidate?.checkpoints[pointIndex]} source={source} timeZone={analysis?.timeZone} />
+            <RouteMap route={route} candidate={candidate} onSelect={setSelectedPoint} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
           </div>
 
           {/* Metrics & Scrubber Details */}
-          {candidate && (
-            <>
-              <div className="bone-trip-metrics">
-                <Metric label="On the road">{duration(route.durationSeconds)}</Metric>
-                <Metric label="Estimated arrival">{clock(candidate.arrival, analysis.timeZone)} <small>{day(candidate.arrival, analysis.timeZone)}</small></Metric>
-                <Metric label="Higher exposure">{Math.round(candidate.higherMinutes)} <small>min</small></Metric>
-                <Metric label="Forecast coverage">{candidate.complete ? 'Complete' : `${Math.round(candidate.unknownMinutes)} min unknown`}</Metric>
-              </div>
-
-              <div className="bone-scrubber-section">
-                <DepartureScrubber candidates={candidates} selectedIndex={departureIndex} onChange={setDepartureIndex} recommendedId={analysis.recommendation?.candidateId} timeZone={analysis.timeZone} />
-
-                {/* Recommendation Banner */}
-                <div className="bone-rec-bar" aria-live="polite">
-                  <span className="rec-star-quiet" aria-hidden="true">★</span>
-                  <div className="rec-bar-content">
-                    <span className="rec-kicker">{analysis.recommendation?.allHigherExposure ? 'HIGHER EXPOSURE ACROSS WINDOW' : 'RECOMMENDED DEPARTURE WINDOW'}</span>
-                    {recommended ? (
-                      <>
-                        <h4>{clock(analysis.recommendation.windowStart, analysis.timeZone)}{analysis.recommendation.windowStart !== analysis.recommendation.windowEnd && `–${clock(analysis.recommendation.windowEnd, analysis.timeZone)}`} ET <span>· {analysis.routes.find(item => item.id === recommended.routeId)?.name}</span></h4>
-                        <p>{Math.round(recommended.higherMinutes)} higher-exposure minutes, compared with {Math.round(baseline?.higherMinutes || 0)} at the earliest departure on the direct route. Arrives {clock(recommended.arrival, analysis.timeZone)} ET.{analysis.recommendation.timingSensitive && ' Sensitive to a ±15-minute change in arrival timing.'}</p>
-                      </>
-                    ) : (
-                      <p>{analysis.recommendation?.reason}</p>
-                    )}
-                  </div>
-                  {recommended && (
-                    <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
-                      Explore this departure →
-                    </button>
-                  )}
-                </div>
-
-                {/* All Checkpoints Drawer */}
-                <details className="checkpoints-list-bone">
-                  <summary>All {route?.checkpoints.length || 0} checkpoints <span>15-minute travel intervals + destination</span></summary>
-                  <div className="checkpoint-buttons-grid">
-                    {route?.checkpoints.map((point, index) => (
-                      <button type="button" key={point.id} className={candidate.checkpoints[index]?.level} aria-pressed={pointIndex === index} onClick={() => setSelectedPoint(index)}>
-                        <span>{String(index + 1).padStart(2, '0')}</span>
-                        <strong>{clock(candidate.checkpoints[index]?.arrival, analysis.timeZone)}</strong>
-                        <small>Mile {miles(point.distanceMeters)} · {LEVELS[candidate.checkpoints[index]?.level]?.label}</small>
-                      </button>
-                    ))}
-                  </div>
-                </details>
-
-                {/* Methodology Details */}
-                <details className="methodology-bone">
-                  <summary>Methodology & Atmospheric Data Sources</summary>
-                  <p>{analysis.recommendation?.reason}</p>
-                  <ul>{analysis.limitations?.map(item => <li key={item}>{item}</li>)}</ul>
-                  <p>Demonstration thresholds: rain caution ≥1 mm/h, higher ≥7.5 mm/h; projected crosswind gust caution ≥25 km/h, higher ≥45 km/h; visibility caution below 3 km, higher below 1 km. Wet conditions with air temperature ≤2°C trigger possible freezing conditions. Unknown data cannot earn a clear label. Scoring: {analysis.scoringVersion}.</p>
-                  <p>{analysis.sources?.filter(item => item.trafficNote).map(item => item.trafficNote).join(' ')}</p>
-                  <p><a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noreferrer">Open-Meteo / NOAA HRRR</a> · <a href="https://project-osrm.org/" target="_blank" rel="noreferrer">OSRM Demo Routing</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></p>
-                </details>
-              </div>
-            </>
-          )}
-
-          {!analysis && !busy && (
-            <div className="no-analysis-pane">
-              <h3>Your next drive starts here.</h3>
-              <p>Choose a departure window and analyze a trip. The simulated scenario works without external API keys.</p>
+          <div className="bone-details-flow">
+            {/* Interactive Timeline Scrubber */}
+            <div className="bone-scrubber-module">
+              <DepartureScrubber
+                candidates={candidates}
+                selectedIndex={departureIndex}
+                recommendedId={recommended?.id}
+                onSelect={setDepartureIndex}
+              />
             </div>
-          )}
 
-          <footer className="bone-card-footer">
-            <span>WEATHER AT ARRIVAL · FORESIGHT FOR THE ROAD</span>
-            <span>{analysis ? `Analyzed ${clock(analysis.generatedAt, analysis.timeZone)} ET · ${analysis.coverageStatus} coverage` : `${routingProvider} routing + HRRR point forecasts`}</span>
-          </footer>
+            {/* Quick Metrics Bar */}
+            <div className="bone-metrics-row">
+              <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
+              <Metric label="Exposure Index">
+                {candidate ? `${Math.round(candidate.exposureScore * 100)} / 100` : '—'}
+              </Metric>
+              <Metric label="Peak Condition">
+                {candidate ? LEVELS[candidate.worstLevel].label : '—'}
+              </Metric>
+              <Metric label="Departure Time">
+                {candidate ? `${clock(candidate.departureTime)} ET` : '—'}
+              </Metric>
+            </div>
+
+            {/* Compared Alternatives */}
+            {form.alternatives && analysis?.routes?.length > 1 && (
+              <div className="alternatives-summary-callout">
+                <h4>Route Alternatives Analyzed</h4>
+                <div className="alternatives-chips">
+                  {analysis.routes.map(r => {
+                    const bestForR = analysis.candidates
+                      .filter(c => c.routeId === r.id)
+                      .sort((a, b) => a.exposureScore - b.exposureScore)[0]
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        className={`alt-chip ${r.id === routeId ? 'active' : ''}`}
+                        onClick={() => {
+                          setRouteId(r.id)
+                          setDepartureIndex(0)
+                        }}
+                      >
+                        <span className="alt-title">{r.title}</span>
+                        <span className="alt-meta">{miles(r.distanceMeters)} mi · best score {Math.round(bestForR?.exposureScore * 100)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       </main>
+
+      {/* Atmospheric Footer */}
+      <footer className="planner-footer">
+        <p>WeatherWay Ohio Corridor Dispatch &middot; Open-Meteo &middot; NOAA HRRR &middot; Mapbox / OSRM &middot; Leaflet</p>
+      </footer>
     </div>
   )
 }
