@@ -832,10 +832,24 @@
   margin: 4px 0 0;
 }
 
-.header-badges-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.header-recommendation {
+  max-width: 380px;
+  text-align: right;
+}
+.header-recommendation p {
+  margin: 4px 0 0;
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.header-recommendation p + p {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ink-dim);
 }
 
 .pinned-pill-tag {
@@ -1213,9 +1227,25 @@
    5. Trip Metrics & Scrubber Section
    ========================================================================== */
 
+.drive-weather {
+  margin-top: 8px;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+}
+.drive-weather p {
+  margin: 6px 0 0;
+  max-width: 68ch;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
 .bone-trip-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding: 18px 32px;
@@ -1263,7 +1293,7 @@
 }
 
 .scrubber {
-  padding-bottom: 20px;
+  padding-bottom: 4px;
 }
 
 .scrubber-title {
@@ -1551,22 +1581,33 @@
     border-top: 1px solid var(--border);
   }
   .bone-trip-metrics {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px 0;
   }
-  .trip-metric:nth-child(3) {
+  .trip-metric:nth-child(3n + 1) {
     border-left: 0;
     padding-left: 0;
   }
 }
 
 @media (max-width: 720px) {
+  .bone-trip-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .trip-metric:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
   .capsule-links {
     display: none;
   }
   .bone-card-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .header-recommendation {
+    max-width: none;
+    text-align: left;
   }
   .bone-rec-bar {
     flex-direction: column;

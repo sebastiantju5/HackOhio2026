@@ -12,7 +12,7 @@ from providers import ProviderError, fetch_forecasts, fetch_routes, routing_prov
 from providers import BoundedCache
 from google_routes import read_google_routes
 from stops import plan_stops
-from vehicles import validate_vehicle
+from vehicles import retail_fuel_prices, validate_vehicle
 
 trips = Blueprint("trips", __name__)
 analyses = BoundedCache(maximum=16, ttl=900)
@@ -30,9 +30,13 @@ PLACES = [
 
 @trips.get("/api/trips/config")
 def config():
-    return jsonify({"places": PLACES, "routingProvider": routing_provider(), "demo": {
+    payload = {"places": PLACES, "routingProvider": routing_provider(), "demo": {
         "origin": PLACES[0], "destination": PLACES[1], "description": scenario()["description"]},
-        "limits": {"departureStepMinutes": 5, "checkpointMinutes": 15}})
+        "limits": {"departureStepMinutes": 5, "checkpointMinutes": 15}}
+    prices = retail_fuel_prices()
+    if prices:
+        payload["fuelPrices"] = prices
+    return jsonify(payload)
 
 
 @trips.post("/api/trips/analyze")
