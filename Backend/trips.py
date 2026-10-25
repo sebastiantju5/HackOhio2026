@@ -2,14 +2,20 @@
 
 from datetime import datetime
 from uuid import uuid4
+from time import monotonic
 
 from flask import Blueprint, jsonify, request
 
 from corridor import SCORING_VERSION, TripError, UTC, analyze_routes, iso, sample_route, validate_request
 from demo import demo_forecasts, demo_routes, scenario
 from providers import ProviderError, fetch_forecasts, fetch_routes, routing_provider
+from providers import BoundedCache
+from google_routes import read_google_routes
+from stops import plan_stops
+from vehicles import validate_vehicle
 
 trips = Blueprint("trips", __name__)
+analyses = BoundedCache(maximum=16, ttl=900)
 
 PLACES = [
     {"name": "Columbus, OH", "coordinates": [-82.9988, 39.9612]},
@@ -32,7 +38,8 @@ def config():
 @trips.post("/api/trips/analyze")
 def analyze():
     try:
-        trip = validate_request(request.get_json(silent=True))
+        body = request.get_json(silent=True)
+        trip = validate_request(body)
         is_demo = trip["dataMode"] == "demo"
         if is_demo:
             if any(trip[key]["coordinates"] != PLACES[index]["coordinates"] for key, index in (("origin", 0), ("destination", 1))):
@@ -43,7 +50,10 @@ def analyze():
             sources = [{"provider": "Authored simulation", "model": "Synthetic moving rain band", "cadenceMinutes": 15,
                         "retrievedAt": None, "note": "Simulated weather and illustrative corridor geometry; not a recorded forecast or navigation route."}]
         else:
-            raw_routes, route_source = fetch_routes(trip["origin"], trip["destination"], trip["start"], trip["includeAlternatives"])
+            if "googleRoutes" in body:
+                raw_routes, route_source = read_google_routes(body["googleRoutes"], trip["origin"], trip["destination"], trip["includeAlternatives"])
+            else:
+                raw_routes, route_source = fetch_routes(trip["origin"], trip["destination"], trip["start"], trip["includeAlternatives"])
             routes = [sample_route(route) for route in raw_routes]
             forecasts, weather_source = fetch_forecasts(routes, trip["start"], trip["end"])
             sources = [route_source, weather_source]
@@ -52,7 +62,9 @@ def analyze():
         for route in routes:
             for point, series in zip(route["checkpoints"], forecasts[route["id"]]):
                 point["forecastGridCoordinates"] = series.get("gridCoordinates")
-        return jsonify({"analysisId": str(uuid4()), "generatedAt": iso(datetime.now(UTC)), "dataMode": trip["dataMode"],
+        analysis_id = str(uuid4())
+        analyses.get_or_load(analysis_id, lambda: (routes, forecasts, candidates, is_demo))
+        return jsonify({"analysisId": analysis_id, "generatedAt": iso(datetime.now(UTC)), "dataMode": trip["dataMode"],
                         "timeZone": trip["timeZone"], "origin": trip["origin"], "destination": trip["destination"],
                         "scoringVersion": SCORING_VERSION, "sources": sources, "routes": routes, "candidates": candidates,
                         "recommendation": recommendation,
@@ -64,3 +76,29 @@ def analyze():
         return jsonify({"error": str(error)}), 400
     except ProviderError as error:
         return jsonify({"error": str(error), "dataMode": "live"}), error.status
+
+
+@trips.post("/api/trips/stop-plan")
+def stop_plan():
+    try:
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get("analysisId"), str):
+            raise TripError("Analyze a trip before planning stops.")
+        with analyses.lock:
+            item = analyses.items.get(data["analysisId"])
+            if not item or monotonic() - item[0] >= analyses.ttl:
+                return jsonify({"error": "This analysis expired. Click Find Window to refresh forecasts."}), 410
+            routes, forecasts, candidates, is_demo = item[1]
+        candidate = next((c for c in candidates if c["id"] == data.get("candidateId")), None)
+        if not candidate:
+            raise TripError("Choose a departure from this analysis.")
+        route = next(r for r in routes if r["id"] == candidate["routeId"])
+        vehicle = validate_vehicle(data["vehicle"]) if data.get("vehicle") is not None else None
+        plan = plan_stops(route, forecasts[route["id"]], candidate, vehicle,
+                          data.get("startingFuel", 1), data.get("includeFood", True))
+        return jsonify(plan | {"analysisId": data["analysisId"], "candidateId": candidate["id"],
+                               "dataMode": "demo" if is_demo else "live"})
+    except TripError as error:
+        return jsonify({"error": str(error)}), 400
+    except ProviderError as error:
+        return jsonify({"error": str(error)}), error.status

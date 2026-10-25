@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './SignIn.css'
+import VehicleProfile from './VehicleProfile.jsx'
 
 const DEMO = {
   email: 'alex@weatherway.app',
@@ -27,7 +28,7 @@ function validate(form, mode) {
   return errors
 }
 
-export default function SignIn({ session, onLogin, onLogout, onBack }) {
+export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, vehicleError, onVehicleChange, vehicleReady }) {
   const [mode, setMode] = useState('signin')
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
@@ -121,7 +122,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack }) {
             <em>clarified.</em>
           </h1>
           <p className="stage-copy">
-            Sign in to save your Ohio travel corridors, calibrate exposure alerts, and evaluate the safest departure window for your journeys.
+            Sign in to save your car, estimate fuel needs, and find better moments for a food or weather break.
           </p>
 
           <div className="auth-features">
@@ -135,8 +136,8 @@ export default function SignIn({ session, onLogin, onLogout, onBack }) {
             <div className="auth-feature-item">
               <span className="feature-dot" />
               <div>
-                <strong>Personalized route windows</strong>
-                <p>Saved thresholds for rain intensity, crosswind gusts, and freeze risk.</p>
+                <strong>A plan for your car</strong>
+                <p>EPA highway mileage, fuel reserves, and arrival-matched break timing.</p>
               </div>
             </div>
           </div>
@@ -170,6 +171,7 @@ export default function SignIn({ session, onLogin, onLogout, onBack }) {
                 </div>
               </div>
 
+              {vehicleReady ? <VehicleProfile session={session} vehicle={vehicle} onChange={onVehicleChange} loadError={vehicleError} /> : <p role="status">Loading your garage…</p>}
               <div className="signed-in-actions">
                 <button type="button" className="primary btn-return-planner" onClick={onBack}>
                   ← Return to Trip Planner

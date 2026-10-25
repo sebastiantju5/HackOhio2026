@@ -6,7 +6,7 @@ import { isGoogleMapsAuthFailed, loadGoogleMaps, mapsKey, onGoogleMapsAuthFailur
 
 const latLng = coordinates => [coordinates[1], coordinates[0]]
 
-function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPlace, onAuthError }) {
+function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPlace, stops, onAuthError }) {
   const container = useRef(null)
   const map = useRef(null)
   const drawn = useRef([])
@@ -87,8 +87,21 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
       line.addListener('click', () => onSelect(index))
     })
 
+    stops?.forEach((stop, index) => {
+      const marker = new google.maps.Marker({
+        map: map.current,
+        position: { lat: stop.coordinates[1], lng: stop.coordinates[0] },
+        label: { text: `S${index + 1}`, color: '#fff', fontSize: '11px' },
+        title: `Break ${index + 1}: ${stop.durationMinutes} minutes`,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 17, fillColor: '#6f281a', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+        zIndex: 100,
+      })
+      marker.addListener('click', () => onSelect?.(stop.checkpointIndex))
+      drawn.current.push(marker)
+    })
+
     if (!bounds.isEmpty()) map.current.fitBounds(bounds, 55)
-  }, [mapReady, route, candidate, onSelect])
+  }, [mapReady, route, candidate, stops, onSelect])
 
   // Direct line preview without calling legacy DirectionsService (which throws REQUEST_DENIED)
   useEffect(() => {
@@ -137,7 +150,7 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
   )
 }
 
-function LeafletRouteMap({ route, candidate, onSelect, originPlace, destinationPlace }) {
+function LeafletRouteMap({ route, candidate, onSelect, originPlace, destinationPlace, stops }) {
   const container = useRef(null)
   const map = useRef(null)
   const layers = useRef(null)
@@ -180,7 +193,15 @@ function LeafletRouteMap({ route, candidate, onSelect, originPlace, destinationP
       const level = candidate.segmentLevels[index]
       L.polyline(segment.coordinates.map(latLng), { color: LEVELS[level].color, weight: 7, opacity: 1, dashArray: level === 'unknown' ? '5 8' : undefined }).addTo(layers.current).on('click', () => onSelect(index))
     })
-  }, [route, candidate, onSelect])
+
+    stops?.forEach((stop, index) => {
+      L.marker(latLng(stop.coordinates), {
+        icon: L.divIcon({ className: 'checkpoint-marker stop-marker', html: `<span class="map-dot stop-dot">S${index + 1}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] }),
+        title: `Suggested break ${index + 1}: ${stop.durationMinutes} min`,
+        keyboard: true,
+      }).on('click', () => onSelect?.(stop.checkpointIndex)).addTo(layers.current)
+    })
+  }, [route, candidate, stops, onSelect])
 
   return (
     <div className="map-wrap">

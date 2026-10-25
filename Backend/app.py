@@ -8,11 +8,15 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv(Path(__file__).with_name(".env"))
 
 from trips import trips
+from corridor import TripError
+from providers import ProviderError
+from vehicles import epa_vehicle, validate_vehicle, vehicle_options
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
@@ -209,6 +213,57 @@ def logout():
         except psycopg.Error:
             return jsonify({"error": "Account storage is unavailable."}), 503
     return jsonify({"ok": True})
+
+
+@app.get("/api/vehicles/options")
+def vehicle_lookup():
+    try:
+        year = request.args.get("year", "")
+        if not year.isdigit():
+            raise TripError("Enter a model year.")
+        return jsonify({"options": vehicle_options(int(year), request.args.get("make"), request.args.get("model"))})
+    except TripError as error:
+        return jsonify({"error": str(error)}), 400
+    except ProviderError as error:
+        return jsonify({"error": str(error)}), error.status
+
+
+@app.get("/api/vehicles/estimate/<vehicle_id>")
+def vehicle_estimate(vehicle_id):
+    try:
+        return jsonify({"vehicle": epa_vehicle(vehicle_id)})
+    except TripError as error:
+        return jsonify({"error": str(error)}), 400
+    except ProviderError as error:
+        return jsonify({"error": str(error)}), error.status
+
+
+@app.route("/api/account/vehicle", methods=["GET", "PUT", "DELETE"])
+def account_vehicle():
+    if not bearer_token():
+        return jsonify({"error": "Sign in to save your car."}), 401
+    try:
+        with connect() as conn:
+            user = account_for_token(conn, bearer_token())
+            if not user:
+                return jsonify({"error": "Sign in required."}), 401
+            if request.method == "PUT":
+                profile = validate_vehicle(request.get_json(silent=True))
+                conn.execute("""INSERT INTO account_vehicles (account_id, profile) VALUES (%s, %s)
+                                ON CONFLICT (account_id) DO UPDATE SET profile = EXCLUDED.profile, updated_at = NOW()""",
+                             (user["id"], Jsonb(profile)))
+                return jsonify({"vehicle": profile})
+            if request.method == "DELETE":
+                conn.execute("DELETE FROM account_vehicles WHERE account_id = %s", (user["id"],))
+                return jsonify({"ok": True})
+            row = conn.execute("SELECT profile FROM account_vehicles WHERE account_id = %s", (user["id"],)).fetchone()
+            return jsonify({"vehicle": row["profile"] if row else None})
+    except TripError as error:
+        return jsonify({"error": str(error)}), 400
+    except ProviderError as error:
+        return jsonify({"error": str(error)}), error.status
+    except psycopg.Error:
+        return jsonify({"error": "Vehicle storage is unavailable. Start PostgreSQL and run uv run python Backend/app.py --init-db."}), 503
 
 
 ensure_db_ready()

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import RouteMap from './RouteMap.jsx'
 import DepartureScrubber from './DepartureScrubber.jsx'
+import StopPlanner from './StopPlanner.jsx'
 import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
 import PlaceField from './PlaceField.jsx'
-import { geocodeAddress } from './googleMaps.js'
+import { geocodeAddress, getGoogleRoutes, mapsKey } from './googleMaps.js'
 import './TripPlanner.css'
 
 const PLACES = [
@@ -71,11 +72,13 @@ async function getAnalysis(form, signal) {
     throw new Error('Choose a starting point and a destination.')
   }
   const range = departureRange(form.leave, Number(form.windowMinutes))
+  const googleRoutes = form.mode === 'live' && mapsKey() ? await getGoogleRoutes(form).catch(() => undefined) : undefined
+  if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
   const response = await fetch('/api/trips/analyze', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
     body: JSON.stringify({ origin: form.originPlace, destination: form.destinationPlace,
       departureStart: range.start, departureEnd: range.end, timeZone: TIME_ZONE,
-      includeAlternatives: form.alternatives, dataMode: form.mode }),
+      includeAlternatives: form.alternatives, dataMode: form.mode, googleRoutes }),
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || 'The planner is unavailable. Check that the Flask backend is running on port 5001.')
@@ -87,7 +90,7 @@ function Metric({ label, children }) {
   return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
 }
 
-export default function TripPlanner() {
+export default function TripPlanner({ session: _session, onAccount: _onAccount, onLogout: _onLogout, vehicle, vehicleError: _vehicleError, vehicleReady }) {
   const [form, setForm] = useState(defaults)
   const [analysis, setAnalysis] = useState(null)
   const [routeId, setRouteId] = useState(null)
@@ -97,8 +100,10 @@ export default function TripPlanner() {
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
   const [_routingProvider, setRoutingProvider] = useState('OSRM')
+  const [stopPlan, setStopPlan] = useState(null)
   const request = useRef(null)
   const initialForm = useRef(form)
+  const mapRegion = useRef(null)
 
   function accept(data) {
     setAnalysis(data)
@@ -178,6 +183,15 @@ export default function TripPlanner() {
   const route = analysis?.routes.find(item => item.id === routeId)
   const candidates = analysis?.candidates.filter(item => item.routeId === routeId) || []
   const candidate = candidates[departureIndex] || candidates[0]
+  const activePlan = stopPlan?.candidateId === candidate?.id && stopPlan?.analysisId === analysis?.analysisId ? stopPlan : null
+  const displayCandidate = activePlan ? {
+    ...candidate,
+    arrival: activePlan.arrival,
+    higherMinutes: activePlan.higherMinutes,
+    checkpoints: activePlan.checkpointConditions,
+    segmentLevels: activePlan.segmentLevels,
+  } : candidate
+
   const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
 
   function useRecommendation() {
@@ -330,8 +344,15 @@ export default function TripPlanner() {
           </div>
 
           {/* Map Layout */}
-          <div className="bone-split-layout">
-            <RouteMap route={route} candidate={candidate} onSelect={setSelectedPoint} originPlace={form.originPlace} destinationPlace={form.destinationPlace} />
+          <div className="bone-split-layout" ref={mapRegion}>
+            <RouteMap
+              route={route}
+              candidate={displayCandidate}
+              stops={activePlan?.stops}
+              onSelect={setSelectedPoint}
+              originPlace={form.originPlace}
+              destinationPlace={form.destinationPlace}
+            />
           </div>
 
           {/* Metrics & Scrubber Details */}
@@ -349,16 +370,26 @@ export default function TripPlanner() {
             {/* Quick Metrics Bar */}
             <div className="bone-metrics-row">
               <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
+              <Metric label={activePlan ? 'Arrival with breaks' : 'Estimated Arrival'}>
+                {candidate ? `${clock(displayCandidate.arrival)} ET` : '—'}
+              </Metric>
               <Metric label="Exposure Index">
-                {candidate ? `${Math.round(candidate.exposureScore * 100)} / 100` : '—'}
+                {candidate ? `${Math.round(displayCandidate.exposureScore * 100)} / 100` : '—'}
               </Metric>
               <Metric label="Peak Condition">
-                {candidate ? LEVELS[candidate.worstLevel].label : '—'}
-              </Metric>
-              <Metric label="Departure Time">
-                {candidate ? `${clock(candidate.departureTime)} ET` : '—'}
+                {candidate ? LEVELS[displayCandidate.worstLevel].label : '—'}
               </Metric>
             </div>
+
+            {/* Weather-Aware Break Stops Module */}
+            <StopPlanner
+              analysis={analysis}
+              candidate={candidate}
+              vehicle={vehicle}
+              vehicleReady={vehicleReady}
+              onPlanChange={setStopPlan}
+              onScrollToMap={() => mapRegion.current?.scrollIntoView({ behavior: 'smooth' })}
+            />
 
             {/* Compared Alternatives */}
             {form.alternatives && analysis?.routes?.length > 1 && (

@@ -118,7 +118,8 @@ def fetch_forecasts(routes, start, end):
     # Keep sensitivity lookups covered and align preceding-sum endpoints to quarter hours.
     first = start - timedelta(minutes=30)
     first = first.replace(minute=(first.minute // 15) * 15, second=0, microsecond=0)
-    last = end + timedelta(seconds=max(r["durationSeconds"] for r in routes), minutes=30)
+    # Cover up to 90 minutes of breaks plus arrival-time sensitivity.
+    last = end + timedelta(seconds=max(r["durationSeconds"] for r in routes), minutes=120)
     last = last.replace(second=0, microsecond=0) + timedelta(minutes=(15 - last.minute % 15) % 15)
     locations = list(dict.fromkeys(tuple(p["coordinates"]) for p in points))
     model, model_label = forecast_model(locations)
