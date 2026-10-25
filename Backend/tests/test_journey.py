@@ -10,6 +10,7 @@ from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import journey
+import openrouter_client
 from app import app
 from corridor import UTC, TripError, analyze_routes, iso, sample_route
 from demo import demo_forecasts, demo_routes
@@ -283,6 +284,83 @@ class JourneyTests(unittest.TestCase):
         self.assertEqual(events[-1]['type'], 'done')
         self.assertIsNotNone(events[-1]['plan'])
 
+    def test_stream_journey_handles_missing_plan_id_and_empty_citations(self):
+        cases = [
+            {'answer': 'In this simulated trip, forecast uncertainty is low.', 'citedSourceIds': []},
+            {'answer': 'In this simulated trip, conditions are fairly certain.', 'citedSourceIds': ['invalid_id'], 'planId': None},
+        ]
+        for payload in cases:
+            with self.subTest(payload=payload):
+                raw_json = json.dumps(payload)
+                chunks = [
+                    ('delta', raw_json),
+                    ('message', {'role': 'assistant', 'content': raw_json}, {'total_tokens': 30})
+                ]
+                with patch('journey.stream_complete', side_effect=lambda *args, **kwargs: iter(chunks)):
+                    events = list(stream_journey(
+                        7, 'analysis', self.snapshot, self.route, self.candidate, CAR,
+                        'Explain the forecast uncertainty.', .75
+                    ))
+                done_events = [e for e in events if e.get('type') == 'done']
+                self.assertEqual(len(done_events), 1)
+                done = done_events[0]
+                self.assertTrue(done.get('answer'))
+                self.assertGreater(len(done['answer'].strip()), 0)
+                citation_ids = [c['id'] for c in done.get('citations', [])]
+                self.assertIn('trip', citation_ids)
+
+    def test_stream_journey_handles_plain_text_and_think_tags(self):
+        raw_text = '<think> analyzing uncertainty </think>In this simulated trip, the forecast covers your whole drive with low uncertainty.'
+        expected_clean = 'In this simulated trip, the forecast covers your whole drive with low uncertainty.'
+        chunks = [
+            ('delta', raw_text),
+            ('message', {'role': 'assistant', 'content': raw_text}, {'total_tokens': 35})
+        ]
+        with patch('journey.stream_complete', side_effect=lambda *args, **kwargs: iter(chunks)):
+            events = list(stream_journey(
+                7, 'analysis', self.snapshot, self.route, self.candidate, CAR,
+                'Explain the forecast uncertainty.', .75
+            ))
+        done_events = [e for e in events if e.get('type') == 'done']
+        self.assertEqual(len(done_events), 1)
+        done = done_events[0]
+        self.assertNotIn('<think>', done.get('answer', ''))
+        self.assertNotIn('</think>', done.get('answer', ''))
+        self.assertNotIn('analyzing uncertainty', done.get('answer', ''))
+        self.assertIn(expected_clean, done.get('answer', ''))
+        citation_ids = [c['id'] for c in done.get('citations', [])]
+        self.assertIn('trip', citation_ids)
+
+    def test_stream_journey_falls_back_gracefully_on_empty_or_failed_model_output(self):
+        default_buttons = [
+            'Explain the forecast uncertainty.',
+            'Would a food break help avoid the rain?',
+            'Can I finish with this fuel?',
+        ]
+        empty_chunks = [('message', {'role': 'assistant', 'content': ''}, {'total_tokens': 0})]
+        failure_modes = [
+            ('empty_message', lambda *args, **kwargs: iter(empty_chunks)),
+            ('journey_error', JourneyError('Upstream model unavailable', 503)),
+        ]
+        for question in default_buttons:
+            for failure_name, side_effect in failure_modes:
+                with self.subTest(question=question, failure=failure_name):
+                    with patch('journey.stream_complete', side_effect=side_effect):
+                        events = list(stream_journey(
+                            7, 'analysis', self.snapshot, self.route, self.candidate, CAR,
+                            question, .75
+                        ))
+                    done_events = [e for e in events if e.get('type') == 'done']
+                    self.assertEqual(len(done_events), 1)
+                    done = done_events[0]
+                    self.assertIsInstance(done.get('answer'), str)
+                    self.assertGreater(len(done['answer'].strip()), 0)
+                    self.assertNotIn('<think>', done['answer'])
+                    self.assertIsInstance(done.get('citations'), list)
+                    self.assertGreater(len(done['citations']), 0)
+                    citation_ids = [c['id'] for c in done['citations']]
+                    self.assertIn('trip', citation_ids)
+
     def test_stdout_logging_during_turn(self):
         captured = io.StringIO()
         with patch('sys.stdout', captured), patch('journey.complete', return_value=final()):
@@ -384,6 +462,40 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(items[0], ('delta', 'fallback answer'))
         self.assertEqual(items[1][0], 'message')
         self.assertEqual(items[1][1]['content'], 'fallback answer')
+
+    def test_use_local_llm_flag_switches_endpoint_and_model(self):
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({'choices': [{'message': {'content': '{}'}}], 'usage': {'total_tokens': 2}}).encode()
+
+        local_env = {
+            'USE_LOCAL_LLM': 'true',
+            'LOCAL_LLM_BASE_URL': 'http://192.168.1.142:11434/v1',
+            'LOCAL_LLM_MODEL': '/models/Ling-3.0-tiny-Q5_K_M.gguf',
+            'OPENROUTER_API_KEY': '',
+        }
+        with patch.dict('os.environ', local_env):
+            self.assertTrue(openrouter_client.configured())
+            with patch('openrouter_client.urlopen') as urlopen:
+                urlopen.return_value.__enter__.return_value = mock_response
+                complete([], [], {}, final=True)
+                req = urlopen.call_args.args[0]
+                self.assertEqual(req.full_url, 'http://192.168.1.142:11434/v1/chat/completions')
+                payload = json.loads(req.data)
+                self.assertEqual(payload['model'], '/models/Ling-3.0-tiny-Q5_K_M.gguf')
+
+        remote_env = {
+            'USE_LOCAL_LLM': 'false',
+            'OPENROUTER_API_KEY': 'dummy-key',
+            'OPENROUTER_MODEL': 'openrouter/free',
+        }
+        with patch.dict('os.environ', remote_env):
+            with patch('openrouter_client.urlopen') as urlopen:
+                urlopen.return_value.__enter__.return_value = mock_response
+                complete([], [], {}, final=True)
+                req = urlopen.call_args.args[0]
+                self.assertEqual(req.full_url, 'https://openrouter.ai/api/v1/chat/completions')
+                payload = json.loads(req.data)
+                self.assertEqual(payload['model'], 'openrouter/free')
 
 
 if __name__ == '__main__':

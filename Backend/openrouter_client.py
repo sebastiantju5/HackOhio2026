@@ -1,7 +1,8 @@
-"""Server-only, bounded OpenRouter chat transport. Never echo upstream bodies."""
+"""Server-only, bounded OpenRouter or local OpenAI-compatible chat transport. Never echo upstream bodies."""
 
 import json
 import os
+import time
 from socket import timeout
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -13,24 +14,48 @@ class JourneyError(RuntimeError):
         self.status = status
 
 
+def use_local_llm():
+    return os.environ.get('USE_LOCAL_LLM', '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def chat_endpoint():
+    if use_local_llm():
+        base = os.environ.get('LOCAL_LLM_BASE_URL', 'http://192.168.1.142:11434/v1').strip().rstrip('/')
+        return base if base.endswith('/chat/completions') else f'{base}/chat/completions'
+    return 'https://openrouter.ai/api/v1/chat/completions'
+
+
+def _request_model_id():
+    if use_local_llm():
+        return os.environ.get('LOCAL_LLM_MODEL', '/models/Ling-3.0-tiny-Q5_K_M.gguf').strip()
+    return os.environ.get('OPENROUTER_MODEL', 'openai/gpt-4.1-mini')
+
+
 def model_name():
+    if use_local_llm():
+        raw = _request_model_id()
+        return os.environ.get('LOCAL_LLM_DISPLAY_NAME', raw.split('/')[-1] or raw)
     return os.environ.get('OPENROUTER_MODEL', 'openai/gpt-4.1-mini')
 
 
 def configured():
+    if use_local_llm():
+        return bool(os.environ.get('LOCAL_LLM_BASE_URL', 'http://192.168.1.142:11434/v1').strip())
     return bool(os.environ.get('OPENROUTER_API_KEY', '').strip())
 
 
 def complete(messages, tools, response_schema, *, final=False):
+    local = use_local_llm()
     key = os.environ.get('OPENROUTER_API_KEY', '').strip()
-    if not key:
+    if not key and not local:
         raise JourneyError('The journey agent is not configured on this server.', 503)
-    payload = {'model': model_name(), 'messages': messages, 'temperature': .2, 'max_tokens': 1200,
+    auth_token = key or 'local-llm'
+    payload = {'model': _request_model_id(), 'messages': messages, 'temperature': .2, 'max_tokens': 1200,
                'provider': {'require_parameters': True, 'data_collection': 'deny'},
                'response_format': {'type': 'json_schema', 'json_schema': {'name': 'journey_answer', 'strict': True, 'schema': response_schema}},
                'tools': tools, 'tool_choice': 'none' if final else 'auto'}
-    request = Request('https://openrouter.ai/api/v1/chat/completions', data=json.dumps(payload).encode(), method='POST',
-                      headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
+    request = Request(chat_endpoint(), data=json.dumps(payload).encode(), method='POST',
+                      headers={'Authorization': 'Bearer ' + auth_token, 'Content-Type': 'application/json',
                                'X-OpenRouter-Title': 'WeatherWay Journey', 'HTTP-Referer': 'http://localhost:5173'})
     for attempt in range(2):
         try:
@@ -43,17 +68,20 @@ def complete(messages, tools, response_schema, *, final=False):
                 raise ValueError()
             if data.get('error'):
                 if attempt == 0:
-                    import time; time.sleep(1.2)
+                    time.sleep(1.2)
                     continue
                 raise JourneyError('OpenRouter could not complete the request. Check the configured model and provider availability.', 503)
             message = data['choices'][0]['message']
             if not isinstance(message, dict):
                 raise ValueError()
+            if attempt == 0 and not (message.get('content') or '').strip() and not (message.get('tool_calls') or []) and (message.get('content') != '{}'):
+                time.sleep(0.8)
+                continue
             usage = data.get('usage') if isinstance(data.get('usage'), dict) else {}
             return message, {key: usage[key] for key in ('prompt_tokens', 'completion_tokens', 'total_tokens') if isinstance(usage.get(key), int)}
         except HTTPError as error:
             if attempt == 0 and error.code in (429, 502, 503):
-                import time; time.sleep(1.2)
+                time.sleep(1.2)
                 continue
             status = error.code
             if status in (401, 403):
@@ -65,28 +93,30 @@ def complete(messages, tools, response_schema, *, final=False):
             raise JourneyError('OpenRouter could not complete this request. Check model availability and try again.', 503) from None
         except (timeout, TimeoutError):
             if attempt == 0:
-                import time; time.sleep(1)
+                time.sleep(1)
                 continue
             raise JourneyError('The journey agent timed out. Try a shorter question.', 504) from None
         except (URLError, OSError, ValueError, KeyError, IndexError, TypeError):
             if attempt == 0:
-                import time; time.sleep(1)
+                time.sleep(1)
                 continue
             raise JourneyError('The journey agent could not be reached or returned an invalid response.', 503) from None
     raise JourneyError('The journey agent could not complete this request. Check model availability and try again.', 503)
 
 
 def stream_complete(messages, tools, response_schema, *, final=False):
+    local = use_local_llm()
     key = os.environ.get('OPENROUTER_API_KEY', '').strip()
-    if not key:
+    if not key and not local:
         raise JourneyError('The journey agent is not configured on this server.', 503)
-    payload = {'model': model_name(), 'messages': messages, 'temperature': .2, 'max_tokens': 1200,
+    auth_token = key or 'local-llm'
+    payload = {'model': _request_model_id(), 'messages': messages, 'temperature': .2, 'max_tokens': 1200,
                'stream': True,
                'provider': {'require_parameters': True, 'data_collection': 'deny'},
                'response_format': {'type': 'json_schema', 'json_schema': {'name': 'journey_answer', 'strict': True, 'schema': response_schema}},
                'tools': tools, 'tool_choice': 'none' if final else 'auto'}
-    request = Request('https://openrouter.ai/api/v1/chat/completions', data=json.dumps(payload).encode(), method='POST',
-                      headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
+    request = Request(chat_endpoint(), data=json.dumps(payload).encode(), method='POST',
+                      headers={'Authorization': 'Bearer ' + auth_token, 'Content-Type': 'application/json',
                                'X-OpenRouter-Title': 'WeatherWay Journey', 'HTTP-Referer': 'http://localhost:5173'})
 
     accumulated_content = []
@@ -154,9 +184,13 @@ def stream_complete(messages, tools, response_schema, *, final=False):
                     if chunk.get('usage') and isinstance(chunk['usage'], dict):
                         usage_dict.update({k: chunk['usage'][k] for k in ('prompt_tokens', 'completion_tokens', 'total_tokens') if isinstance(chunk['usage'].get(k), int)})
 
+        content_str = ''.join(accumulated_content)
+        if not content_str.strip() and not accumulated_tool_calls:
+            raise ValueError('Empty streaming response from provider')
+
         message_dict = {'role': 'assistant'}
         if accumulated_content:
-            message_dict['content'] = ''.join(accumulated_content)
+            message_dict['content'] = content_str
         else:
             message_dict['content'] = None
         if accumulated_tool_calls:
@@ -164,7 +198,7 @@ def stream_complete(messages, tools, response_schema, *, final=False):
         yield ('message', message_dict, usage_dict)
 
     except Exception:
-        if not accumulated_content:
+        if not ''.join(accumulated_content).strip() and not accumulated_tool_calls:
             message, usage = complete(messages, tools, response_schema, final=final)
             if message.get('content'):
                 yield ('delta', message['content'])

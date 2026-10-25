@@ -62,7 +62,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
     }
   }
 
-  async function ask(event, directQuestion) {
+  async function ask(event, directQuestion, overrides = {}) {
     event?.preventDefault()
     const prompt = (directQuestion || question).trim()
     if (prompt.length < 3 || busy) return
@@ -94,7 +94,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
           question: prompt,
           startingFuel: startingFuel / 100,
           maxStopMinutes: Number(budget),
-          preferCheaperGas,
+          preferCheaperGas: overrides.preferCheaperGas ?? preferCheaperGas,
           fuelGrade,
           stream: true,
           currentStops: Array.isArray(appliedPlan?.stops)
@@ -399,7 +399,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
 
           <div className="journey-suggestions">
             {SUGGESTIONS.map(text => (
-              <button key={text} type="button" disabled={busy} onClick={() => setQuestion(text)}>
+              <button key={text} type="button" disabled={busy} onClick={() => ask(null, text)}>
                 {text}
               </button>
             ))}
@@ -409,7 +409,7 @@ export default function JourneyAgent({ analysis, candidate, session, vehicle, ro
               onClick={() => {
                 if (appliedPlan?.journeyPlanId) onApply(null)
                 setPreferCheaperGas(true)
-                setQuestion('Plan my needed refueling stops and help me compare cheaper gas options near them.')
+                ask(null, 'Plan my needed refueling stops and help me compare cheaper gas options near them.', { preferCheaperGas: true })
               }}
             >
               Find cheaper gas for my trip
