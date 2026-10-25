@@ -1,8 +1,8 @@
 # WeatherWay · HackOhio 2026
 
-A spatio-temporal road-trip weather planner built with React/Vite, Leaflet, Flask, and PostgreSQL. Compare weather at estimated route-checkpoint arrival times, then scrub departure times to find a lower-exposure window.
+A spatio-temporal road-trip weather planner built with React/Vite, Leaflet, Google Maps, Flask, and PostgreSQL. Compare weather at estimated route-checkpoint arrival times, then scrub departure times to find a lower-exposure window.
 
-Styled in the **Terracotta Immersive Editorial** design system with a floating capsule navigation bar, high-contrast serif typography, unified bone folio workspace, and integrated account authentication.
+Styled in the **Terracotta Immersive Editorial** design system with a centered top navigation bar, high-contrast serif typography, responsive search capsule, unified bone folio workspace, weather-aware break planning, and integrated multi-user account authentication.
 
 ---
 
@@ -19,7 +19,7 @@ docker compose up -d
 *(On Windows PowerShell: `docker compose up -d`)*
 
 - Uses PostgreSQL 16 Alpine on port `5433` (preventing conflicts with any local PostgreSQL on port `5432`).
-- Automatically initializes table schemas (`accounts` and `sessions`) and seeds the demo account on first start.
+- Automatically initializes table schemas (`accounts`, `sessions`, and `account_vehicles`) and seeds the demo account on first start.
 - Persists data to the `postgres_data` volume.
 
 To check container health:
@@ -61,51 +61,44 @@ Open **`http://localhost:5173`** in your browser. Vite proxies `/api` requests t
 
 ---
 
-## Authentication & Demo Account
+## Core Features & What Works
 
-The trip planner connects directly to the authentication portal:
+- **Search Capsule with Responsive Layout**:
+  - Full-width, unclipped inputs for **From** and **To** with intelligent city autocomplete (Google Places API New with OpenStreetMap / Nominatim fallback).
+  - Single departure time (`Leave`) coupled with an interactive `Before & after` window slider (from exact departure up to ±6 hours).
+  - Alternatives checkbox and primary action button cleanly contained inside the capsule with balanced margins and padding across 1080p desktop and mobile viewports.
+  - Floating pill bar above the capsule for one-click toggling between **Simulated** and **Live forecast** modes.
 
-- Click **Sign in ↗** in the floating capsule navbar to open the login portal.
-- Use the 1-click **Auto-fill** button to load the seeded demo credentials:
-  - **Email**: `alex@weatherway.app`
-  - **Password**: `neighborhood`
-- Or create a new account via the **Create Account** tab.
-- Once signed in, your user badge (`AR Alex`) appears in the capsule navbar with quick sign-out and profile viewing.
-- Open your profile to add one car: make, model, year, highway MPG and tank size in **US gallons**. **Look up EPA mileage** finds engine/transmission configurations from FuelEconomy.gov; select the matching configuration for its highway MPG. If no rating is available, enter your own MPG estimate. Tank size is entered from your owner's manual; it is not inferred from the EPA rating. Gasoline and diesel vehicles are supported; EV/alternative-fuel MPGe is not treated as gas mileage.
-- Vehicle profiles persist in PostgreSQL, scoped to the signed-in account. The new `account_vehicles` table is created idempotently on backend startup. For an existing Compose volume, restart the backend or run `uv run python Backend/app.py --init-db`; **do not remove the database volume**.
+- **Dual-Engine Interactive Route Map**:
+  - Automatically loads **Google Maps** if an API key is available.
+  - Catches `gm_authFailure` and unauthorized API responses gracefully, switching immediately to **Leaflet / OpenStreetMap** without intrusive blocking modals.
+  - Shows direct pre-analysis preview lines, full route exposure polyline coloring (emerald green for lower exposure, amber for caution, crimson for higher exposure), and stop markers.
 
-## Fuel, Food & Weather Breaks
+- **Departure Time Scrubber & Weather Heuristics**:
+  - 5-minute candidate departure intervals with arrival-matched weather along the corridor.
+  - Optimal departure window ribbon highlighting minutes saved from storm exposure.
+  - Realistic meteorological hazard scoring: precipitation rate, crosswind gust projection, visibility impairment, and near-freezing moisture flags.
 
-After choosing a route and departure with the scrubber, use **Plan my stops**. Set the starting tank level and whether to include a food break. Without a saved car, weather and food planning still works.
+- **Multi-User Authentication & Garage Vehicle Profiles**:
+  - Top navigation bar featuring `Home`, `Profile`, and `Sign out`.
+  - Account registration and login powered by PostgreSQL and bcrypt password hashing.
+  - User session isolation: each user maintains their own vehicle specifications (year, make, model, highway MPG, tank size).
+  - EPA FuelEconomy.gov configuration lookup alongside custom fuel and tank specifications.
 
-The planner searches checkpoint locations and 15/30/45/60-minute waits, up to three stops and 90 minutes total. A weather wait starts before an upcoming higher-exposure segment, at a checkpoint whose arrival exposure is lower or caution. The optimizer shifts every later arrival, rechecks the forecast, and ranks complete coverage, peak exposure, higher-exposure minutes, weighted exposure, meal preference, then delay. Fuel stops must be reachable while retaining a 15% tank reserve. Fuel estimates use 85% of highway MPG to allow a planning margin; this is a heuristic, not a weather-dependent mileage model.
+- **Weather-Aware Break Planning (StopPlanner)**:
+  - Generates recommended food, fuel, or storm-avoidance stops along the route.
+  - Calculates fuel consumption against vehicle highway MPG with an automatic 15% safety reserve.
+  - Previews suggested breaks (`S1`, `S2`) directly on the map with adjusted arrival times.
 
-**Preview breaks on map** shows stop markers, adjusted route colors, checkpoint arrivals and total arrival time. Only a complete forecast comparison can claim a weather improvement. If waiting does not improve exposure, the result says so; fuel/meal stops can still be included. If checkpoint spacing cannot support the fuel range, the planner reports that instead of inventing a reachable station.
-
-For live trips, **Find nearby gas/food** retrieves up to three Google Places within 1.5 km of a proposed stop area. Enable **Places API (New)** alongside the existing Maps JavaScript, Places, Geocoding and Routes API services for `VITE_GOOGLE_MAPS_API_KEY` in `Frontend/.env`. Requests happen only when the traveler clicks to find venues. API failures and empty results offer a Google Maps search link; they do not fabricate businesses. The simulation labels all stop areas as illustrative and does not fetch real venues.
-
-These are corridor recommendations: opening hours, indoor shelter, diesel availability and road access must be checked. Venue detours, stationary exposure, idling fuel, and weather-induced traffic slowdowns are not included in ETA/fuel estimates. Picking a venue does not yet recalculate a waypoint itinerary.
-
-Analysis snapshots expire after 15 minutes or a server restart (bounded in-memory storage); click **Find Window** to refresh an expired analysis. Changing departure, route, vehicle, starting fuel or food preference clears the previous stop plan.
-
----
-
-## What works
-
-- **Ohio Corridor Presets**: Columbus ↔ Cleveland, Cincinnati, Dayton, Toledo, Akron, and Mansfield.
-- **Dynamic Checkpoints**: 15-minute cumulative driving intervals paired with arrival-matched weather.
-- **Exposure Scrubbing**: 5-minute departure candidate steps, real-time exposure recalculation, and recommended departure window callout.
-- **Grounded Exposure Heuristics**: Rain intensity, crosswind component projection, visibility reduction, and near-freezing moisture flags.
-- **Docker Compose Database**: PostgreSQL container with persistent volume and auto-initialized tables.
-- **Design Variations Gallery**: Interactive showcase of 8 design directions in `design-variations/index.html`.
+- **Route Alternatives**:
+  - Analyzes parallel corridor options (e.g., I-71 vs. Western corridor) with one-click switching and instant exposure comparison.
 
 ---
 
 ## Data Modes
 
-- **Simulated scenario**: Starts automatically. Its authored Columbus–Cleveland corridors and moving rain band require no external weather/routing services. Route overlays remain fully interactive offline.
-- **Live forecast**: The browser uses Google Routes when its Maps key is configured, sends compact route geometry and cumulative step timing to Flask, and matches Open-Meteo weather to those same route checkpoints. Traffic-aware leg durations scale the per-step times. Geometry is capped at 140 vertices per route to retain the existing 16 KB API request limit; positions and within-step timing are approximate. HRRR (`gfs_hrrr`) is used inside its US coverage, GFS elsewhere. Forecasts cover up to 90 minutes of additional stops. Backend-only clients without Google route data retain OSRM (or configured Mapbox) routing.
-- **Optional Mapbox routing**: Create `Backend/.env` based on `Backend/.env.example` and set `MAPBOX_ACCESS_TOKEN` for traffic-aware baseline routing.
+- **Simulated scenario**: Author-crafted Columbus ↔ Cleveland corridors and dynamic rain band. Runs completely offline without external APIs.
+- **Live forecast**: Supports search between any two places nationwide (e.g. Cleveland ↔ Columbus, Columbus ↔ Chicago, Chicago ↔ New York). Queries Google Routes / OSRM for road geometry and Open-Meteo (NOAA HRRR / GFS) for 15-minute point forecasts.
 
 ---
 
@@ -114,12 +107,13 @@ Analysis snapshots expire after 15 minutes or a server restart (bounded in-memor
 Run all unit tests and verify the production build:
 
 ```bash
-# Backend unit tests (vehicle ownership/validation, routing, forecasts, stop timing & fuel)
-uv run python -m unittest discover -s Backend/tests -v
+# Backend unit tests (routes, validation, corridor forecasts, stop timing, vehicles)
+python3 -m unittest discover -s Backend/tests -v
 
-# Frontend unit tests & production bundle
+# Frontend unit tests, linting, and production bundle
 cd Frontend
 npm test
+npm run lint
 npm run build
 ```
 
