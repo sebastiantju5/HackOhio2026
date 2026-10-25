@@ -22,6 +22,46 @@ def weather_response(lon=-83):
 
 
 class ProviderTests(unittest.TestCase):
+    def test_model_selection_covers_full_horizon_and_geography(self):
+        self.assertEqual(forecast_model([(-83, 40)], START + timedelta(hours=16), START)[0], 'gfs_hrrr')
+        self.assertEqual(forecast_model([(-83, 40)], START + timedelta(hours=16, seconds=1), START)[0], 'gfs_seamless')
+        self.assertEqual(forecast_model([(-83, 40)], START + timedelta(days=7), START)[0], 'gfs_seamless')
+        self.assertEqual(forecast_model([(-1, 51)], START + timedelta(hours=1), START)[0], 'gfs_seamless')
+
+    def test_route_duration_and_stop_buffer_can_require_gfs(self):
+        routes = [{"id": "one", "durationSeconds": 3600, "checkpoints": [{"coordinates": [-83, 40]}]}]
+        with patch('providers.weather_cache', BoundedCache()), patch('providers.request_json', return_value=weather_response()) as get:
+            _, source = fetch_forecasts(routes, START + timedelta(hours=10), START + timedelta(hours=14), now=START)
+        query = parse_qs(urlparse(get.call_args.args[0]).query)
+        self.assertEqual(query['models'], ['gfs_seamless'])
+        self.assertIn('GFS', source['model'])
+        self.assertIn('interpolated', source['note'])
+
+    def test_long_range_gfs_preserves_all_required_weather_fields(self):
+        response = weather_response()
+        future = START + timedelta(days=7)
+        response['minutely_15']['time'] = [future.timestamp(), (future + timedelta(minutes=15)).timestamp()]
+        routes = [{"id": "one", "durationSeconds": 900, "checkpoints": [{"coordinates": [-83, 40]}]}]
+        with patch('providers.weather_cache', BoundedCache()), patch('providers.request_json', return_value=response) as get:
+            forecasts, source = fetch_forecasts(routes, future, future, now=START)
+        self.assertEqual(parse_qs(urlparse(get.call_args.args[0]).query)['models'], ['gfs_seamless'])
+        condition = score_weather(lookup_forecast(forecasts['one'][0], future), 90)
+        self.assertEqual(condition['level'], 'lower')
+        self.assertEqual(source['validStart'], future.isoformat().replace('+00:00', 'Z'))
+
+    def test_null_timestamp_slots_do_not_claim_usable_forecast_coverage(self):
+        response = weather_response()
+        for field in response['minutely_15']:
+            if field != 'time':
+                response['minutely_15'][field] = [None, None]
+        routes = [{"id": "one", "durationSeconds": 900, "checkpoints": [{"coordinates": [-83, 40]}]}]
+        with patch('providers.weather_cache', BoundedCache()), patch('providers.request_json', return_value=response):
+            forecasts, source = fetch_forecasts(routes, START, START, now=START)
+        self.assertEqual(source['coverageStatus'], 'partial')
+        self.assertIsNone(source['validStart'])
+        self.assertIsNone(source['validEnd'])
+        self.assertEqual(score_weather(lookup_forecast(forecasts['one'][0], START), 90)['level'], 'unknown')
+
     def test_weather_batches_unique_locations_and_keeps_grid_metadata(self):
         routes = [{"id": "one", "durationSeconds": 900, "checkpoints": [{"coordinates": [-83, 40]}, {"coordinates": [-82, 40]}]},
                   {"id": "two", "durationSeconds": 900, "checkpoints": [{"coordinates": [-83, 40]}]}]

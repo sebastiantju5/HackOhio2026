@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test src/format.test.js src/routeGeometry.test.js",
+    "test": "node --test src/format.test.js src/routeGeometry.test.js src/tripAnalysis.test.js src/stopPresentation.test.js src/fuelPrices.test.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
