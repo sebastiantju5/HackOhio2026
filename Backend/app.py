@@ -1,10 +1,11 @@
+import json
 import os
 import secrets
 from pathlib import Path
 
 import psycopg
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request, stream_with_context
 from flask_cors import CORS
 from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
@@ -17,7 +18,7 @@ from trips import trips, selected_analysis
 from corridor import TripError
 from providers import ProviderError
 from vehicles import epa_vehicle, validate_vehicle, vehicle_options
-from journey import request_slot, run_journey, validate_question
+from journey import extract_current_stops, request_slot, run_journey, stream_journey, validate_question
 from openrouter_client import JourneyError, configured, model_name
 from retrieval import knowledge
 
@@ -280,8 +281,9 @@ def journey_chat():
     if not bearer_token():
         return jsonify({'error': 'Sign in to use the journey agent.'}), 401
     try:
-        question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade = validate_question(request.get_json(silent=True))
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
+        question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade = validate_question(data)
+        current_stops = extract_current_stops(data)
         with connect() as conn:
             user = account_for_token(conn, bearer_token())
             if not user:
@@ -294,8 +296,25 @@ def journey_chat():
         if selected is None:
             return jsonify({'error': 'This analysis expired. Click Find Window to refresh forecasts.'}), 410
         snapshot, route, candidate = selected
+
+        if data.get('stream') is True:
+            def generate():
+                try:
+                    with request_slot(user['id']):
+                        for event in stream_journey(user['id'], data['analysisId'], snapshot, route, candidate, vehicle, question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade, current_stops=current_stops):
+                            if event.get('type') == 'done':
+                                event = event | {'analysisId': data['analysisId'], 'candidateId': data['candidateId']}
+                            yield f"data: {json.dumps(event)}\n\n"
+                except (TripError, JourneyError) as err:
+                    yield f"data: {json.dumps({'type': 'error', 'error': str(err)})}\n\n"
+                except Exception:
+                    yield f"data: {json.dumps({'type': 'error', 'error': 'An unexpected error occurred.'})}\n\n"
+
+            return Response(stream_with_context(generate()), mimetype='text/event-stream',
+                            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
         with request_slot(user['id']):
-            result = run_journey(user['id'], data['analysisId'], snapshot, route, candidate, vehicle, question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade)
+            result = run_journey(user['id'], data['analysisId'], snapshot, route, candidate, vehicle, question, starting_fuel, stop_budget, prefer_cheaper, fuel_grade, current_stops=current_stops)
         return jsonify(result | {'analysisId': data['analysisId'], 'candidateId': data['candidateId']})
     except TripError as error:
         return jsonify({'error': str(error)}), 400

@@ -148,3 +148,162 @@ def plan_stops(route, series, candidate, vehicle=None, starting_fuel=1, food=Tru
                           "arrivalTankPercent": round(100 * arrival_gallons / capacity), "reservePercent": 15,
                           "source": vehicle["mpgSource"], "note": "15% MPG reduction and 15% tank reserve; no idling or detour fuel modeled."}
     return result
+
+
+def evaluate_custom_stops(route, series, candidate, custom_stops, vehicle=None, starting_fuel=1):
+    if not finite_number(starting_fuel) or not .05 <= starting_fuel <= 1:
+        raise TripError("Starting fuel must be between 5% and 100%.")
+    departure = parse_time(candidate["departure"])
+    points = route["checkpoints"]
+    has_fuel = bool(vehicle) and finite_number(vehicle.get("mpg")) and finite_number(vehicle.get("tankGallons"))
+    mpg = vehicle["mpg"] * MPG_FACTOR if has_fuel else None
+    capacity = vehicle["tankGallons"] if has_fuel else None
+    initial_range = max(0, starting_fuel - RESERVE) * capacity * mpg if has_fuel else float("inf")
+    full_range = (1 - RESERVE) * capacity * mpg if has_fuel else float("inf")
+
+    if custom_stops is None:
+        custom_stops = []
+
+    num_points = len(points)
+    max_idx = num_points - 2
+    valid_stops = []
+    if max_idx >= 1 and custom_stops:
+        sorted_stops = sorted(custom_stops, key=lambda s: int(s.get("checkpointIndex", 1)))
+        seen = set()
+        for s in sorted_stops:
+            idx = max(1, min(max_idx, int(s.get("checkpointIndex", 1))))
+            if idx in seen:
+                continue
+            seen.add(idx)
+            dur = max(5, min(90, int(s.get("durationMinutes", 15))))
+            valid_stops.append({
+                "checkpointIndex": idx,
+                "durationMinutes": dur,
+                "fuel": bool(s.get("fuel", False)),
+                "food": bool(s.get("food", False)),
+                "weatherBreak": bool(s.get("weatherBreak", False)),
+            })
+
+    stop_map = {s["checkpointIndex"]: s for s in valid_stops}
+    conditions = {}
+
+    def condition(index, delay):
+        key = (index, delay)
+        if key not in conditions:
+            point = points[index]
+            arrival = departure + timedelta(seconds=point["offsetSeconds"], minutes=delay)
+            conditions[key] = {"checkpointId": point["id"], "arrival": iso(arrival),
+                               **score_weather(lookup_forecast(series[index], arrival), point["bearingDeg"])}
+        return conditions[key]
+
+    delay = 0
+    last_refuel = -1
+    stops = []
+    high = 0
+    weighted = 0
+    unknown = 0
+    worst = 0
+    levels = []
+    arrivals = [condition(0, 0)]
+    meal_included = False
+
+    for index, segment in enumerate(route["segments"]):
+        if index in stop_map:
+            s = stop_map[index]
+            wait = s["durationMinutes"]
+            refuel = s["fuel"]
+            meal = s["food"]
+            weather_break = s["weatherBreak"]
+            here = condition(index, delay)
+            delay += wait
+            left = condition(index, delay)
+            if refuel:
+                last_refuel = index
+            meal_included = meal_included or meal
+            stops.append({
+                "checkpointIndex": index,
+                "coordinates": points[index]["coordinates"],
+                "mile": round(points[index]["distanceMeters"] / MILE, 1),
+                "arrival": here["arrival"],
+                "resume": left["arrival"],
+                "durationMinutes": wait,
+                "fuel": refuel,
+                "food": meal,
+                "weatherBreak": weather_break,
+                "arrivalLevel": here["level"],
+                "resumeLevel": left["level"],
+                "reason": (("Refuel to a full tank before the 15% reserve. " if refuel else "")
+                           + ("Meal break. " if meal else "")
+                           + ("Wait before the next higher-exposure segment; downstream forecasts are recalculated." if weather_break else "")).strip() or "Custom scheduled stop."
+            })
+        else:
+            left = condition(index, delay)
+
+        next_mile = points[index + 1]["distanceMeters"] / MILE
+        refuel_mile = points[last_refuel]["distanceMeters"] / MILE if last_refuel >= 0 else 0
+        if next_mile - refuel_mile > (full_range if last_refuel >= 0 else initial_range) + .001:
+            return {
+                "status": "unreachable",
+                "stops": [],
+                "reason": "Deleting or moving that fuel stop leaves insufficient fuel to reach the destination with a 15% reserve."
+            }
+
+        right = condition(index + 1, delay)
+        known = [p["severity"] for p in (left, right) if p["severity"] is not None]
+        severity = max(known, default=0)
+        incomplete = len(known) < 2
+        minutes = segment["durationSeconds"] / 60
+        high += (minutes if severity == 2 else 0)
+        weighted += severity * minutes
+        unknown += (minutes if incomplete else 0)
+        worst = max(worst, severity)
+        levels.append(CLASS_NAMES[severity] if severity or not incomplete else "unknown")
+        arrivals.append(right)
+
+    complete = unknown == 0 and all(p["severity"] is not None for p in arrivals)
+    improved = complete and candidate["complete"] and (
+        worst, round(high, 1), round(weighted, 2)
+    ) < (candidate["worstSeverity"], candidate["higherMinutes"], candidate["weightedExposure"])
+    result = {
+        "status": "planned",
+        "stops": stops,
+        "complete": complete,
+        "worstSeverity": worst,
+        "level": CLASS_NAMES[worst] if complete or worst > 0 else "unknown",
+        "unknownMinutes": round(unknown, 1),
+        "weightedExposure": round(weighted, 2),
+        "departure": candidate["departure"],
+        "arrival": arrivals[-1]["arrival"],
+        "totalStopMinutes": delay,
+        "higherMinutes": round(high, 1),
+        "baselineHigherMinutes": candidate["higherMinutes"],
+        "weatherImproved": improved,
+        "higherMinutesAvoided": round(max(0, candidate["higherMinutes"] - high), 1) if improved else 0,
+        "mealIncluded": meal_included,
+        "checkpointConditions": arrivals,
+        "segmentLevels": levels,
+        "reason": "A break reduces forecast driving exposure." if improved else
+                  ("Custom stop plan evaluated." if stops else "No weather-reducing break found. Fuel and meal stops may still be included."),
+        "assumptions": [
+            "Stop locations are search areas near route checkpoints. Verify road access, hours and suitable indoor shelter.",
+            "Times exclude venue detours. A selected business is not a verified shelter or a rerouted itinerary.",
+            "Forecasts are evaluated after every stop; stationary exposure and weather slowdowns are not modeled."
+        ]
+    }
+    if has_fuel:
+        distance_miles = route["distanceMeters"] / MILE
+        last = last_refuel
+        remaining_miles = distance_miles - (points[last]["distanceMeters"] / MILE if last >= 0 else 0)
+        arrival_gallons = capacity * (1 if last >= 0 else starting_fuel) - remaining_miles / mpg
+        result["fuel"] = {
+            "ratedMpg": vehicle["mpg"],
+            "planningMpg": round(mpg, 1),
+            "estimatedGallons": round(distance_miles / mpg, 1),
+            "startingRangeMiles": round(initial_range),
+            "arrivalTankPercent": round(100 * arrival_gallons / capacity),
+            "reservePercent": 15,
+            "source": vehicle["mpgSource"],
+            "note": "15% MPG reduction and 15% tank reserve; no idling or detour fuel modeled."
+        }
+    return result
+

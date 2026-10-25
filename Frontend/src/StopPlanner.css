@@ -1,4 +1,6 @@
-.stop-planner { border-top: 1px solid var(--border); padding: 32px; background: #f0ede4; color: var(--ink); }
+.stop-planner { border-top: 1px solid var(--border); padding: 24px 26px; background: #f0ede4; color: var(--ink); }
+.right-stops-board > .stop-planner:first-child { border-top: 0; }
+.right-stops-board > .route-stops + .stop-planner { border-top: 0; }
 .stop-intro, .stop-summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .stop-kicker { font: 10px var(--font-mono); letter-spacing: 1.4px; color: var(--terracotta); }
 .stop-intro h3 { font: 400 36px var(--font-serif); margin: 10px 0; }
@@ -40,4 +42,4 @@
 .stop-assumptions summary { cursor: pointer; }
 .stop-planner .stop-error { color: #a32424; }
 .stop-map-marker { display: grid; place-items: center; border-radius: 7px; width: 30px; height: 30px; background: var(--terracotta); border: 2px solid white; color: white; font-weight: 700; box-shadow: 0 2px 8px #0003; }
-@media (max-width: 720px) { .stop-planner { padding: 24px 18px; } .stop-intro, .stop-summary { flex-direction: column; align-items: flex-start; gap: 10px; } .stop-controls { gap: 20px; padding: 16px; } .stop-intro h3 { font-size: 30px; } .stop-card { padding: 16px; } .stop-card-heading { flex-wrap: wrap; } .stop-metrics { gap: 20px; } }
+@media (max-width: 720px) { .stop-planner { padding: 22px 18px; } .stop-intro, .stop-summary { flex-direction: column; align-items: flex-start; gap: 10px; } .stop-controls { gap: 20px; padding: 16px; } .stop-intro h3 { font-size: 30px; } .stop-card { padding: 16px; } .stop-card-heading { flex-wrap: wrap; } .stop-metrics { gap: 20px; } }

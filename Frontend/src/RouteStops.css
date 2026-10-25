@@ -1,4 +1,4 @@
-.route-stops { padding: 24px 32px; border-bottom: 1px solid var(--border); background: #f0ede4; color: var(--ink); }
+.route-stops { padding: 24px 26px; border-bottom: 1px solid var(--border); background: #f0ede4; color: var(--ink); }
 .route-stops-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .route-stops-kicker { font: 10px var(--font-mono); letter-spacing: 1px; color: var(--terracotta); }
 .route-stops h3 { font: 400 28px var(--font-serif); margin: 8px 0; }
@@ -39,6 +39,4 @@
 .route-stop-popup p { margin: 8px 0 0; }
 .map-stop-notice { position: absolute; z-index: 500; top: 12px; right: 12px; background: #fffdf5; color: #6f281a; border: 1px solid #dfd8cc; border-radius: 7px; padding: 8px 12px; font: 600 11px var(--font-sans); max-width: calc(100% - 70px); pointer-events: none; }
 .bone-split-layout { scroll-margin-top: 90px; }
-.journey-map-stop-list { display: grid; gap: 8px; margin: 14px 0; }
-.journey-map-stop-list button { text-align: left; background: white; color: var(--terracotta); border-color: var(--border-dark); }
-@media (max-width:720px) { .route-stops { padding: 22px 20px; } .route-stops-heading { flex-direction: column; } .route-stop-tabs button { width: 100%; } }
+@media (max-width:720px) { .route-stops { padding: 22px 18px; } .route-stops-heading { flex-direction: column; } .route-stop-tabs button { width: 100%; } }

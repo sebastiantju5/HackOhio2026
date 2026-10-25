@@ -13,8 +13,8 @@ import journey
 from app import app
 from corridor import UTC, TripError, analyze_routes, iso, sample_route
 from demo import demo_forecasts, demo_routes
-from journey import run_journey, validate_question
-from openrouter_client import JourneyError, complete
+from journey import StreamingAnswerExtractor, extract_current_stops, run_journey, stream_journey, validate_question
+from openrouter_client import JourneyError, complete, stream_complete
 from retrieval import retrieve
 from stops import plan_stops
 
@@ -174,6 +174,124 @@ class JourneyTests(unittest.TestCase):
         self.assertEqual(result['totalStopMinutes'], 0)
         self.assertEqual(result['stops'], [])
 
+    def test_edit_stop_tool_updates_plan(self):
+        initial_stops = [{'checkpointIndex': 2, 'durationMinutes': 20, 'fuel': False, 'food': False, 'weatherBreak': False}]
+        tool = {'tool_calls': [{'id': 'call-edit', 'type': 'function', 'function': {
+            'name': 'edit_stop', 'arguments': json.dumps({'stopNumber': 1, 'durationMinutes': 45, 'food': True})}}], 'content': None}
+        with patch('journey.complete', side_effect=[(tool, {}), final(plan_id='plan-1')]):
+            result = self.run_agent('Extend my first stop to 45 minutes for lunch', current_stops=initial_stops)
+        self.assertTrue(result['plan']['stopsModified'])
+        self.assertEqual(result['plan']['stops'][0]['durationMinutes'], 45)
+        self.assertEqual(result['plan']['totalStopMinutes'], 45)
+        self.assertTrue(result['plan']['mealIncluded'])
+        self.assertIn('edit_stop', [t['tool'] for t in result['trace']])
+
+    def test_delete_stop_tool_removes_stop(self):
+        initial_stops = [
+            {'checkpointIndex': 1, 'durationMinutes': 20, 'fuel': False, 'food': False, 'weatherBreak': False},
+            {'checkpointIndex': 2, 'durationMinutes': 30, 'fuel': False, 'food': False, 'weatherBreak': False}
+        ]
+        tool = {'tool_calls': [{'id': 'call-del', 'type': 'function', 'function': {
+            'name': 'delete_stop', 'arguments': json.dumps({'stopNumber': 1})}}], 'content': None}
+        with patch('journey.complete', side_effect=[(tool, {}), final(plan_id='plan-1')]):
+            result = self.run_agent('Remove stop 1', current_stops=initial_stops)
+        self.assertTrue(result['plan']['stopsModified'])
+        self.assertEqual(len(result['plan']['stops']), 1)
+        self.assertEqual(result['plan']['stops'][0]['checkpointIndex'], 2)
+        self.assertIn('delete_stop', [t['tool'] for t in result['trace']])
+
+    def test_delete_all_stops(self):
+        initial_stops = [{'checkpointIndex': 1, 'durationMinutes': 20, 'fuel': False, 'food': False, 'weatherBreak': False}]
+        tool = {'tool_calls': [{'id': 'call-del-all', 'type': 'function', 'function': {
+            'name': 'delete_stop', 'arguments': json.dumps({'stopNumber': 0})}}], 'content': None}
+        with patch('journey.complete', side_effect=[(tool, {}), final(plan_id='plan-1')]):
+            result = self.run_agent('Clear all stops', current_stops=initial_stops)
+        self.assertTrue(result['plan']['stopsModified'])
+        self.assertEqual(len(result['plan']['stops']), 0)
+        self.assertEqual(result['plan']['totalStopMinutes'], 0)
+
+    def test_edit_stop_tool_with_target_mile(self):
+        initial_stops = [{'checkpointIndex': 1, 'durationMinutes': 20, 'fuel': False, 'food': False, 'weatherBreak': False}]
+        tool = {'tool_calls': [{'id': 'call-edit-mile', 'type': 'function', 'function': {
+            'name': 'edit_stop', 'arguments': json.dumps({'stopNumber': 1, 'durationMinutes': 30, 'targetMile': 50.0})}}], 'content': None}
+        with patch('journey.complete', side_effect=[(tool, {}), final(plan_id='plan-1')]):
+            result = self.run_agent('Move stop 1 closer to mile 50', current_stops=initial_stops)
+        self.assertTrue(result['plan']['stopsModified'])
+        self.assertGreaterEqual(len(result['plan']['stops']), 1)
+        self.assertEqual(result['plan']['stops'][0]['durationMinutes'], 30)
+
+    def test_edit_stop_tool_nonexistent_stop_returns_error(self):
+        tool = {'tool_calls': [{'id': 'call-edit-bad', 'type': 'function', 'function': {
+            'name': 'edit_stop', 'arguments': json.dumps({'stopNumber': 3, 'durationMinutes': 30})}}], 'content': None}
+        with patch('journey.complete', side_effect=[(tool, {}), final(answer='Stop S3 does not exist in your plan.', plan_id=None)]):
+            result = self.run_agent('Edit stop 3', current_stops=[])
+        self.assertIn('does not exist', result['answer'])
+
+    def test_streaming_answer_extractor_edge_cases(self):
+        extractor = StreamingAnswerExtractor()
+        deltas = []
+        chunks = [
+            '{"planId": null, ',
+            '"answer": "Drive safely\\nwith ',
+            'caution \\"now\\"!"',
+            ', "citedSourceIds": ["trip"]}'
+        ]
+        for c in chunks:
+            deltas.extend(extractor.feed(c))
+        self.assertEqual(''.join(deltas), 'Drive safely\nwith caution "now"!')
+        self.assertTrue(extractor.finished_answer)
+
+    def test_extract_current_stops_validation(self):
+        valid = [{'checkpointIndex': 2, 'durationMinutes': 30, 'fuel': True, 'food': False, 'weatherBreak': False}]
+        self.assertEqual(extract_current_stops({'currentStops': valid}), valid)
+        self.assertIsNone(extract_current_stops({}))
+        self.assertIsNone(extract_current_stops(None))
+        for bad in ('not-a-list', [{}], [{'checkpointIndex': 'two', 'durationMinutes': 15, 'fuel': False, 'food': False, 'weatherBreak': False}],
+                    [{'checkpointIndex': 1, 'durationMinutes': 'fifteen', 'fuel': False, 'food': False, 'weatherBreak': False}],
+                    [{'checkpointIndex': 1, 'durationMinutes': 15, 'fuel': 'yes', 'food': False, 'weatherBreak': False}]):
+            with self.subTest(bad=bad), self.assertRaises(TripError):
+                extract_current_stops({'currentStops': bad})
+
+    def test_stream_journey_emits_thinking_deltas_and_done(self):
+        raw_json = json.dumps({'answer': 'In this simulated trip, all clear.', 'citedSourceIds': ['trip'], 'planId': None})
+        chunks = [('delta', raw_json[:20]), ('delta', raw_json[20:]),
+                  ('message', {'role': 'assistant', 'content': raw_json}, {'total_tokens': 50})]
+        with patch('journey.stream_complete', return_value=iter(chunks)):
+            events = list(stream_journey(7, 'analysis', self.snapshot, self.route, self.candidate, CAR, 'How is the drive?', .75))
+        self.assertEqual(events[0], {'type': 'thinking', 'phase': 'thinking', 'message': 'Thinking & checking your route…'})
+        delta_events = [e for e in events if e.get('type') == 'delta']
+        self.assertGreater(len(delta_events), 0)
+        self.assertEqual(''.join(e['delta'] for e in delta_events), 'In this simulated trip, all clear.')
+        done_event = events[-1]
+        self.assertEqual(done_event['type'], 'done')
+        self.assertEqual(done_event['answer'], 'In this simulated trip, all clear.')
+        self.assertIn('citations', done_event)
+        self.assertIn('trace', done_event)
+
+    def test_stream_journey_emits_tool_phase_events(self):
+        tool_call_msg = {'role': 'assistant', 'content': None, 'tool_calls': [{'id': 'call-1', 'type': 'function',
+            'function': {'name': 'compare_break_options', 'arguments': json.dumps({'includeFood': True, 'maxStopMinutes': 45})}}]}
+        raw_json = json.dumps({'answer': 'In this simulated trip, 45 minute break ready.', 'citedSourceIds': ['trip', 'plan-1'], 'planId': 'plan-1'})
+        stream1 = [('message', tool_call_msg, {'total_tokens': 30})]
+        stream2 = [('delta', raw_json), ('message', {'role': 'assistant', 'content': raw_json}, {'total_tokens': 40})]
+        with patch('journey.stream_complete', side_effect=[iter(stream1), iter(stream2)]):
+            events = list(stream_journey(7, 'analysis', self.snapshot, self.route, self.candidate, CAR, 'Add a food break', .75))
+        tool_events = [e for e in events if e.get('type') == 'tool']
+        self.assertEqual(len(tool_events), 1)
+        self.assertEqual(tool_events[0]['phase'], 'tool')
+        self.assertIn('Calculating stop options', tool_events[0]['message'])
+        self.assertEqual(events[-1]['type'], 'done')
+        self.assertIsNotNone(events[-1]['plan'])
+
+    def test_stdout_logging_during_turn(self):
+        captured = io.StringIO()
+        with patch('sys.stdout', captured), patch('journey.complete', return_value=final()):
+            self.run_agent()
+        output = captured.getvalue()
+        self.assertIn('[Journey] Turn complete', output)
+        self.assertIn('Retrieved docs:', output)
+        self.assertIn('Citations:', output)
+
 
 class JourneyApiTests(unittest.TestCase):
     def test_authentication_is_required_before_model_or_database_use(self):
@@ -197,6 +315,29 @@ class JourneyApiTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[0], 7)
         self.assertEqual(run.call_args.args[5], CAR)
         self.assertEqual(run.call_args.args[-2:], (True, 'PREMIUM'))
+
+    def test_journey_chat_streaming(self):
+        client = app.test_client()
+        snapshot, route, candidate = fixture()
+        conn = MagicMock()
+        conn.execute.return_value.fetchone.return_value = {'profile': CAR}
+        body = {'analysisId': 'id', 'candidateId': candidate['id'], 'question': 'Check my drive', 'stream': True}
+        mock_events = [
+            {'type': 'thinking', 'phase': 'thinking', 'message': 'Thinking…'},
+            {'type': 'delta', 'delta': 'All good.'},
+            {'type': 'done', 'answer': 'All good.', 'citations': []}
+        ]
+        with patch('app.connect') as connect, patch('app.account_for_token', return_value={'id': 7}), \
+                patch('app.configured', return_value=True), patch('app.selected_analysis', return_value=(snapshot, route, candidate)), \
+                patch('app.stream_journey', return_value=iter(mock_events)), patch('app.request_slot'):
+            connect.return_value.__enter__.return_value = conn
+            response = client.post('/api/journey/chat', json=body, headers={'Authorization': 'Bearer test'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'text/event-stream')
+        data = response.get_data(as_text=True)
+        self.assertIn('data: {"type": "thinking"', data)
+        self.assertIn('data: {"type": "delta"', data)
+        self.assertIn('data: {"type": "done"', data)
 
 
 class TransportTests(unittest.TestCase):
@@ -222,6 +363,27 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(payload['provider']['data_collection'], 'deny')
         self.assertEqual(usage['total_tokens'], 2)
         response.read.assert_called_once_with(256001)
+
+    def test_stream_complete_yields_deltas_and_message(self):
+        stream_bytes = b'data: {"choices":[{"delta":{"content":"Hello "}}]}\n\ndata: {"choices":[{"delta":{"content":"world"}}]}\n\ndata: [DONE]\n\n'
+        response = MagicMock()
+        response.headers = {'Content-Type': 'text/event-stream'}
+        response.__iter__.return_value = stream_bytes.splitlines(keepends=True)
+        with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'dummy-key'}), patch('openrouter_client.urlopen') as urlopen:
+            urlopen.return_value.__enter__.return_value = response
+            items = list(stream_complete([], [], {}))
+        deltas = [item[1] for item in items if item[0] == 'delta']
+        self.assertEqual(deltas, ['Hello ', 'world'])
+        msg_items = [item[1] for item in items if item[0] == 'message']
+        self.assertEqual(msg_items[0]['content'], 'Hello world')
+
+    def test_stream_complete_fallback_on_error(self):
+        with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'dummy-key'}), patch('openrouter_client.urlopen', side_effect=HTTPError('http', 500, 'err', {}, io.BytesIO(b''))), \
+                patch('openrouter_client.complete', return_value=({'role': 'assistant', 'content': 'fallback answer'}, {'total_tokens': 10})):
+            items = list(stream_complete([], [], {}))
+        self.assertEqual(items[0], ('delta', 'fallback answer'))
+        self.assertEqual(items[1][0], 'message')
+        self.assertEqual(items[1][1]['content'], 'fallback answer')
 
 
 if __name__ == '__main__':

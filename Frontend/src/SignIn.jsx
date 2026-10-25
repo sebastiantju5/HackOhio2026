@@ -147,13 +147,18 @@ export default function SignIn({ session, onLogin, onLogout, onBack, vehicle, ve
           {user ? (
             <div className="signed-in-card">
               <div className="signed-in-header">
-                <div className="user-avatar-large">
-                  {(user.name || 'User').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+                <div className="signed-in-header-left">
+                  <div className="user-avatar-large">
+                    {(user.name || 'User').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="eyebrow">Authenticated Operator</p>
+                    <h2>Welcome back, {(user.name || 'there').split(' ')[0]}.</h2>
+                  </div>
                 </div>
-                <div>
-                  <p className="eyebrow">Authenticated Operator</p>
-                  <h2>Welcome back, {(user.name || 'there').split(' ')[0]}.</h2>
-                </div>
+                <button type="button" className="header-signout-btn" onClick={onLogout}>
+                  Sign out
+                </button>
               </div>
 
               <div className="session-details">

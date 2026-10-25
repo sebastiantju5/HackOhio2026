@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeatherWay — Dashboard Layout Variations (Faithful to Current App)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       EXACT CURRENT APP DESIGN TOKENS & BASE STYLES
+       (From Frontend/src/TripPlanner.css, JourneyAgent.css, RouteStops.css, StopPlanner.css)
+       ========================================================================== */
+    :root {
+      --terracotta: #6f281a;
+      --terracotta-dark: #541d11;
+      --terracotta-soft: #fbf1ed;
+      --paper: #f8f5ee;
+      --paper-card: #ffffff;
+      --ink: #1b1b1e;
+      --ink-dim: #54524f;
+      --spruce: #1d5b43;
+      --spruce-light: #e3ede8;
+      --amber: #c87508;
+      --hazard-red: #b91c1c;
+      --tag-blue: #93c5fd;
+      --tag-blue-dark: #1e3a8a;
+      --border: #dfd8cc;
+      --border-dark: #c4bcb0;
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--terracotta);
+      color: #ffffff;
+      font-family: var(--font-sans);
+      min-height: 100svh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select, textarea { font-family: inherit; }
+    button { cursor: pointer; }
+
+    /* ==========================================================================
+       MOCKUP VARIATION SWITCHER BAR (Top Sticky Preview Bar)
+       ========================================================================== */
+    .variation-switcher-bar {
+      position: sticky;
+      top: 0;
+      z-index: 2000;
+      background: rgba(52, 18, 10, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .switcher-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .switcher-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: #fed7aa;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .switcher-desc {
+      font-size: 12.5px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .switcher-tabs {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    .switcher-tab {
+      border: 0;
+      border-radius: 9999px;
+      background: transparent;
+      color: #fed7aa;
+      padding: 7px 15px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .switcher-tab:hover {
+      color: #ffffff;
+    }
+
+    .switcher-tab.active {
+      background: #ffffff;
+      color: var(--terracotta);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ==========================================================================
+       1. CURRENT APP FLOATING CAPSULE HEADER & HERO STAGE
+       ========================================================================== */
+    .capsule-wrapper {
+      padding: 22px 20px 8px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .capsule-nav {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 9999px;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      width: fit-content;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+    }
+
+    .capsule-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 9999px;
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .capsule-tabs button {
+      border: 0;
+      border-radius: 9999px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.86);
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .capsule-tabs button[aria-current='page'] {
+      background: #ffffff;
+      color: var(--terracotta);
+    }
+
+    .capsule-tabs .capsule-signout {
+      color: #fed7aa;
+    }
+
+    .hero-stage {
+      text-align: center;
+      max-width: 1220px;
+      margin: 14px auto 26px;
+      padding: 0 20px;
+      transition: all 0.2s ease;
+    }
+
+    .hero-kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #fed7aa;
+      font-weight: 600;
+      margin: 0 0 10px;
+    }
+
+    .hero-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(32px, 4vw, 50px);
+      font-weight: 400;
+      line-height: 1.12;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .hero-headline em {
+      font-style: italic;
+      color: #fed7aa;
+    }
+
+    .hero-sub {
+      font-size: 14px;
+      color: #fed7aa;
+      margin: 10px auto 20px;
+      max-width: 620px;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .planner-mode-bar {
+      display: flex;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+
+    .capsule-mode-picker {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(45, 18, 12, 0.42);
+      backdrop-filter: blur(8px);
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 3px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    }
+
+    .capsule-mode-picker button {
+      border: 0;
+      border-radius: 9999px;
+      color: #ffedd5;
+      background: transparent;
+      padding: 6px 14px;
+      font-size: 11.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .capsule-mode-picker button[aria-pressed='true'] {
+      background: #ffffff;
+      color: var(--terracotta);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .mode-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .mode-dot.live {
+      background: #10b981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+    }
+
+    /* Trip Search Capsule Form */
+    .trip-capsule-form {
+      background: var(--paper);
+      border: 1px solid rgba(200, 185, 165, 0.75);
+      border-radius: 9999px;
+      padding: 5px 6px 5px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      box-shadow: 0 12px 36px rgba(35, 15, 8, 0.22), 0 2px 8px rgba(0, 0, 0, 0.08);
+      max-width: 1180px;
+      width: 100%;
+      margin: 0 auto;
+      color: var(--ink);
+    }
+
+    .capsule-locations {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 260px;
+    }
+
+    .capsule-input-pair {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      gap: 1px;
+      flex: 1;
+    }
+
+    .field-hint {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--terracotta);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .capsule-input-pair input[type='text'] {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+      padding: 3px 4px;
+      margin-left: -4px;
+    }
+
+    .capsule-arrow {
+      color: var(--terracotta);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .capsule-v-divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .capsule-times {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+    }
+
+    .capsule-time-input {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .capsule-time-input input {
+      border: 1px solid rgba(190, 175, 155, 0.75);
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 11px;
+      font-weight: 500;
+      background: #ffffff;
+      color: var(--ink);
+      width: 142px;
+    }
+
+    .capsule-window {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 245px;
+    }
+
+    .capsule-window-body {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .capsule-window input[type='range'] {
+      width: 75px;
+      accent-color: var(--terracotta);
+    }
+
+    .window-size {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .capsule-alt-check {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--ink-dim);
+      font-weight: 600;
+    }
+
+    .capsule-alt-check input {
+      accent-color: var(--terracotta);
+    }
+
+    .capsule-submit-btn {
+      background: var(--terracotta);
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 2px 8px rgba(184, 80, 56, 0.35);
+    }
+
+    /* ==========================================================================
+       2. SHARED CURRENT APP COMPONENT STYLES
+          (Bone Folio, Map, Metrics, Scrubber, JourneyAgent, RouteStops, StopPlanner)
+       ========================================================================== */
+    .unified-bone-card {
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bone-card-header {
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #faf7f0;
+      gap: 16px;
+    }
+
+    .route-spec-heading h2 {
+      font-family: var(--font-serif);
+      font-size: 26px;
+      font-weight: 500;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    .route-arrow {
+      color: var(--terracotta);
+      font-family: sans-serif;
+      margin: 0 6px;
+    }
+
+    .route-spec-heading p {
+      font-size: 12px;
+      color: var(--ink-dim);
+      margin: 4px 0 0;
+    }
+
+    .route-spec-heading .route-source-note {
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .header-badges-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pinned-pill-tag {
+      background: var(--tag-blue);
+      color: var(--tag-blue-dark);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      border: 0;
+    }
+
+    .data-mode-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      padding: 5px 10px;
+      background: var(--spruce-light);
+      border-radius: 4px;
+      color: var(--spruce);
+    }
+
+    .data-mode-tag i {
+      width: 5px;
+      height: 5px;
+      background: currentColor;
+      border-radius: 50%;
+    }
+
+    .analysis-coverage {
+      margin: 0;
+      padding: 10px 28px;
+      font-size: 12px;
+      line-height: 1.6;
+      border-bottom: 1px solid var(--border);
+      background: #edf2eb;
+      color: var(--spruce);
+    }
+
+    .route-options-bar {
+      display: flex;
+      gap: 8px;
+      padding: 11px 28px;
+      background: #f3ede2;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .route-options-bar button {
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .route-options-bar button[aria-pressed='true'] {
+      border-color: var(--terracotta);
+      background: var(--terracotta-soft);
+      color: var(--terracotta);
+      font-weight: 600;
+    }
+
+    .route-choice-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      border: 1px solid var(--ink-dim);
+    }
+
+    .route-options-bar button[aria-pressed='true'] .route-choice-dot {
+      background: var(--terracotta);
+      border-color: var(--terracotta);
+    }
+
+    /* Map Region */
+    .map-wrap {
+      position: relative;
+      min-height: 460px;
+      flex: 1 1 auto;
+      background: #ece6d8;
+      overflow: hidden;
+    }
+
+    .map-svg {
+      width: 100%;
+      height: 100%;
+      min-height: 460px;
+      display: block;
+    }
+
+    .map-stop-notice {
+      position: absolute;
+      z-index: 500;
+      top: 12px;
+      right: 12px;
+      background: #fffdf5;
+      color: #6f281a;
+      border: 1px solid #dfd8cc;
+      border-radius: 7px;
+      padding: 8px 12px;
+      font: 600 11px var(--font-sans);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .map-legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: absolute;
+      z-index: 500;
+      bottom: 14px;
+      left: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 12px;
+    }
+
+    .map-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .map-legend i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    /* Google Maps InfoWindow Popup inside Map */
+    .gm-infowindow {
+      position: absolute;
+      left: 39%;
+      top: 43%;
+      transform: translate(-50%, -115%);
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 12px 14px;
+      width: 220px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.5;
+      z-index: 450;
+    }
+
+    .gm-infowindow::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 8px 8px 0;
+      border-style: solid;
+      border-color: #ffffff transparent transparent;
+    }
+
+    .gm-infowindow strong {
+      display: block;
+      font-size: 13.5px;
+      margin-bottom: 2px;
+    }
+
+    .gm-infowindow .gm-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      border: 0;
+      background: transparent;
+      font-size: 14px;
+      color: var(--ink-dim);
+    }
+
+    /* 6-Column Trip Metrics Bar */
+    .bone-trip-metrics {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      background: #faf7f0;
+    }
+
+    .trip-metric {
+      padding-left: 14px;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .trip-metric:first-child {
+      border-left: 0;
+      padding-left: 0;
+    }
+
+    .trip-metric > span {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--ink-dim);
+      font-weight: 600;
+    }
+
+    .trip-metric strong {
+      font-size: 18px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .trip-metric small {
+      font-size: 10.5px;
+      color: var(--ink-dim);
+    }
+
+    /* Timeline Scrubber Section */
+    .bone-scrubber-section {
+      padding: 22px 28px 26px;
+      background: #ffffff;
+    }
+
+    .mini-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--terracotta);
+    }
+
+    .scrubber-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .scrubber-title h2 {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      margin: 4px 0 0;
+      color: var(--ink);
+    }
+
+    .departure-value {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .departure-value span {
+      font-size: 10px;
+      color: var(--ink-dim);
+    }
+
+    .departure-value strong {
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--terracotta);
+    }
+
+    .departure-bars {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      height: 48px;
+      margin: 14px 0 8px;
+    }
+
+    .departure-bar {
+      position: relative;
+      flex: 1;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .departure-bar > span {
+      width: 100%;
+      background: #bfcfb8;
+      border-radius: 3px 3px 0 0;
+    }
+
+    .departure-bar.higher > span { background: #e0988d; }
+    .departure-bar.caution > span { background: #ecd59b; }
+    .departure-bar.chosen > span { background: var(--terracotta); }
+
+    .scrubber input[type='range'] {
+      display: block;
+      width: 100%;
+      accent-color: var(--terracotta);
+      margin: 6px 0 4px;
+    }
+
+    .scrubber-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--ink-dim);
+    }
+
+    .drive-weather {
+      margin-top: 12px;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .drive-weather p {
+      margin: 6px 0 0;
+      font-family: var(--font-serif);
+      font-size: 19px;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .bone-rec-bar {
+      background: var(--terracotta-soft);
+      border: 1px solid rgba(111, 40, 26, 0.22);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .rec-star-quiet {
+      font-size: 18px;
+      color: var(--terracotta);
+    }
+
+    .rec-bar-content {
+      flex: 1;
+    }
+
+    .rec-kicker {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--terracotta);
+      display: block;
+    }
+
+    .rec-bar-content h4 {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--terracotta-dark);
+      margin: 2px 0 3px;
+    }
+
+    .rec-bar-content p {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #451b12;
+      margin: 0;
+    }
+
+    .rec-lock-btn {
+      background: var(--terracotta);
+      color: #ffffff;
+      border: none;
+      border-radius: 9999px;
+      padding: 9px 16px;
+      font-size: 11.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .bone-card-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 28px;
+      background: #faf7f0;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--ink-dim);
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+    }
+
+    /* ==========================================================================
+       EXACT JOURNEY AGENT STYLES (From Frontend/src/JourneyAgent.css)
+       ========================================================================== */
+    .journey-agent {
+      padding: 26px 26px;
+      color: var(--ink);
+      background: #f8f5ee;
+    }
+
+    .journey-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .journey-kicker {
+      font: 10px var(--font-mono);
+      letter-spacing: 1.4px;
+      color: var(--terracotta);
+    }
+
+    .journey-heading h3 {
+      font: 400 32px var(--font-serif);
+      margin: 6px 0 6px;
+    }
+
+    .journey-agent p {
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--ink-dim);
+      margin: 4px 0;
+    }
+
+    .journey-tag {
+      font: 10px var(--font-mono);
+      color: var(--spruce);
+      border: 1px solid #bfd3c3;
+      border-radius: 30px;
+      padding: 7px 11px;
+      white-space: nowrap;
+    }
+
+    .journey-agent button {
+      font: 600 12px var(--font-sans);
+      background: var(--terracotta);
+      color: white;
+      border: 1px solid var(--terracotta);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .journey-preferences {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 18px;
+      margin: 14px 0;
+    }
+
+    .journey-preferences label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11.5px;
+    }
+
+    .journey-preferences input {
+      accent-color: var(--terracotta);
+    }
+
+    .journey-price-choice small {
+      line-height: 1.45;
+      color: var(--ink-dim);
+      font-size: 10.5px;
+    }
+
+    .journey-price-choice input {
+      margin-right: 6px;
+    }
+
+    .journey-preferences select {
+      font: inherit;
+      color: var(--ink);
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: white;
+    }
+
+    .journey-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 14px 0 10px;
+    }
+
+    .journey-suggestions button {
+      background: transparent;
+      color: var(--terracotta);
+      border-color: var(--border);
+      border-radius: 20px;
+      padding: 7px 11px;
+      font-size: 11px;
+    }
+
+    .journey-form textarea {
+      width: 100%;
+      resize: vertical;
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      padding: 12px;
+      background: white;
+      color: var(--ink);
+      font: 12.5px/1.6 var(--font-sans);
+      margin-top: 10px;
+    }
+
+    .journey-submit {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .journey-submit small {
+      font-size: 10px;
+      color: var(--ink-dim);
+      max-width: 340px;
+      line-height: 1.5;
+    }
+
+    .journey-turn {
+      border: 1px solid var(--border);
+      background: #fffdf8;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-top: 16px;
+    }
+
+    .journey-turn .journey-user-question {
+      font-weight: 600;
+      color: var(--terracotta);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-top: 0;
+    }
+
+    .journey-answer {
+      color: var(--ink) !important;
+      margin: 10px 0 !important;
+    }
+
+    .journey-answer-meta {
+      font: 10px var(--font-mono);
+      color: var(--ink-dim);
+    }
+
+    .journey-computed-plan {
+      background: #edf2eb;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 12px 0 4px;
+    }
+
+    .journey-computed-plan strong {
+      font-size: 12.5px;
+      color: var(--spruce);
+    }
+
+    .journey-map-stop-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .journey-map-stop-list button {
+      background: white;
+      color: var(--terracotta);
+      border-color: var(--border-dark);
+      padding: 7px 10px;
+      font-size: 11px;
+    }
+
+    /* ==========================================================================
+       EXACT ROUTE STOPS & STOP PLANNER STYLES
+       (From Frontend/src/RouteStops.css & StopPlanner.css)
+       ========================================================================== */
+    .route-stops {
+      padding: 24px 26px;
+      background: #f0ede4;
+      color: var(--ink);
+    }
+
+    .route-stops-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .route-stops-kicker {
+      font: 10px var(--font-mono);
+      letter-spacing: 1px;
+      color: var(--terracotta);
+    }
+
+    .route-stops h3 {
+      font: 400 26px var(--font-serif);
+      margin: 6px 0;
+    }
+
+    .route-stops p {
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 6px 0;
+      color: var(--ink-dim);
+    }
+
+    .route-stops button {
+      font: 600 11.5px var(--font-sans);
+      border: 1px solid var(--border-dark);
+      background: white;
+      color: var(--terracotta);
+      padding: 8px 11px;
+      border-radius: 8px;
+    }
+
+    .route-stops-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .route-stop-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .route-stop-choice {
+      display: flex;
+      flex: 1 1 210px;
+      gap: 6px;
+    }
+
+    .route-stop-choice > button:first-child {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 3px 10px;
+      text-align: left;
+      color: var(--ink);
+    }
+
+    .route-stop-choice > button:first-child[aria-pressed='true'] {
+      border-color: var(--terracotta);
+      background: #fbf1ed;
+      box-shadow: 0 0 0 1px var(--terracotta);
+    }
+
+    .route-stop-choice > button:first-child > span {
+      grid-row: span 2;
+      display: grid;
+      place-items: center;
+      background: var(--terracotta);
+      color: white;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .route-stop-choice small {
+      color: var(--ink-dim);
+      font-weight: 400;
+      font-size: 11px;
+    }
+
+    .route-stop-detail {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+
+    .route-stop-detail h4 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .route-stop-search {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .route-stop-search > span {
+      font: 10.5px var(--font-mono);
+      color: var(--ink-dim);
+    }
+
+    .route-fuel-comparison {
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .route-fuel-comparison > strong {
+      font-size: 12.5px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .route-stop-places {
+      display: grid;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .route-stop-places button {
+      width: 100%;
+      color: var(--ink);
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 2px 10px;
+      text-align: left;
+    }
+
+    .route-stop-places button > span {
+      grid-row: span 2;
+      display: grid;
+      place-items: center;
+      background: #245c8b;
+      color: white;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 11px;
+    }
+
+    .route-stop-places button[aria-pressed='true'] {
+      border-color: #245c8b;
+      background: #eef5fb;
+    }
+
+    .stop-planner-mini {
+      border-top: 1px solid var(--border);
+      padding: 18px 26px;
+      background: #faf7f0;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .stop-planner-mini strong {
+      font-size: 13.5px;
+      display: block;
+    }
+
+    .stop-planner-mini span {
+      font-size: 11.5px;
+      color: var(--ink-dim);
+    }
+
+    .stop-primary {
+      border: 1px solid var(--terracotta);
+      border-radius: 8px;
+      background: var(--terracotta);
+      color: white;
+      padding: 10px 14px;
+      font: 600 12px var(--font-sans);
+    }
+
+    /* ==========================================================================
+       DASHBOARD LAYOUT VARIATIONS (Controlled via body[data-variation])
+       All 3 variations place:
+       - Largest Board = Main Map on the Left (>55% width)
+       - Top Right Board = Agentic AI Chat (.journey-agent)
+       - Bottom Right Board = Route Stops (.route-stops + .stop-planner-mini)
+       ========================================================================== */
+
+    .main-stage-container {
+      max-width: 1560px;
+      margin: 0 auto 60px;
+      padding: 0 24px;
+      transition: all 0.2s ease;
+    }
+
+    /* --- VARIATION A: Detached 3-Board Dashboard (3 Separate Bone Folio Cards) --- */
+    body[data-variation="a"] .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.42fr) minmax(440px, 0.98fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    body[data-variation="a"] .right-boards-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    /* --- VARIATION B: Unified Single Bone Folio Split into Left Map & Right Stack --- */
+    body[data-variation="b"] .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.42fr) minmax(440px, 0.98fr);
+      gap: 0;
+      background: var(--paper);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    body[data-variation="b"] .left-map-board {
+      border-radius: 0;
+      box-shadow: none;
+      border-right: 1px solid var(--border);
+    }
+
+    body[data-variation="b"] .right-boards-stack {
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+    }
+
+    body[data-variation="b"] .right-boards-stack > .unified-bone-card {
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    body[data-variation="b"] .right-boards-stack > .unified-bone-card + .unified-bone-card {
+      border-top: 1px solid var(--border);
+    }
+
+    /* --- VARIATION C: Compact Hero + Map-Dominant Viewport Dashboard (62% Left Map) --- */
+    body[data-variation="c"] .hero-kicker,
+    body[data-variation="c"] .hero-headline,
+    body[data-variation="c"] .hero-sub {
+      display: none;
+    }
+
+    body[data-variation="c"] .hero-stage {
+      margin: 6px auto 16px;
+      max-width: 1560px;
+    }
+
+    body[data-variation="c"] .trip-capsule-form {
+      max-width: 1512px;
+    }
+
+    body[data-variation="c"] .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.58fr) minmax(420px, 0.92fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    body[data-variation="c"] .left-map-board .map-wrap,
+    body[data-variation="c"] .left-map-board .map-svg {
+      min-height: 560px;
+    }
+
+    body[data-variation="c"] .right-boards-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Simplified Editorial Footer */
+    .planner-footer {
+      background: linear-gradient(180deg, #491a10 0%, #34120a 100%);
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f5f0ea;
+      padding: 2.75rem 1.5rem 2.25rem;
+      margin-top: 3rem;
+    }
+
+    .planner-footer-inner {
+      max-width: 1512px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-brand-name {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    .footer-mission {
+      font-size: 12.5px;
+      color: rgba(245, 240, 234, 0.78);
+      max-width: 680px;
+      line-height: 1.6;
+      margin: 6px 0 0;
+    }
+
+    .footer-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #a7f3d0;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-dot-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    @media (max-width: 1120px) {
+      body[data-variation="a"] .dashboard-grid,
+      body[data-variation="b"] .dashboard-grid,
+      body[data-variation="c"] .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .bone-trip-metrics {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px 0;
+      }
+    }
+  </style>
+</head>
+<body class="planner-app" data-variation="a">
+
+  <!-- TOP MOCKUP VARIATION SWITCHER -->
+  <div class="variation-switcher-bar">
+    <div class="switcher-left">
+      <span class="switcher-badge">DASHBOARD MOCKUP</span>
+      <span class="switcher-desc" id="variation-caption">
+        <strong>Variation A (3 Bone Folio Cards):</strong> Keeps current Hero &amp; Capsule; splits workspace into Left Map Board (59%) + Right AI Chat Board + Bottom-Right Stops Board.
+      </span>
+    </div>
+    <div class="switcher-tabs" role="tablist">
+      <button type="button" class="switcher-tab active" onclick="setVariation('a', this)">
+        Variation A · 3 Detached Boards
+      </button>
+      <button type="button" class="switcher-tab" onclick="setVariation('b', this)">
+        Variation B · Unified Split Bone Card
+      </button>
+      <button type="button" class="switcher-tab" onclick="setVariation('c', this)">
+        Variation C · Compact Hero + Tall Map
+      </button>
+    </div>
+  </div>
+
+  <!-- 1. EXACT CURRENT FLOATING CAPSULE NAVBAR -->
+  <div class="capsule-wrapper">
+    <nav class="capsule-nav" aria-label="Account navigation">
+      <div class="capsule-tabs">
+        <button type="button" aria-current="page">Home</button>
+        <button type="button">Profile</button>
+        <button type="button" class="capsule-signout">Sign out</button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- 2. EXACT CURRENT HERO STAGE & TRIP SEARCH CAPSULE -->
+  <header class="hero-stage">
+    <p class="hero-kicker">SPATIO-TEMPORAL CORRIDOR DISPATCH</p>
+    <h1 class="hero-headline">
+      Know when the road <em>clears</em>.
+    </h1>
+    <p class="hero-sub">
+      Evaluate real-time precipitation, wind exposure, and pavement hazards at every mile marker—matched to the exact minute you arrive.
+    </p>
+
+    <div class="planner-mode-bar">
+      <div class="capsule-mode-picker" role="group" aria-label="Weather data mode">
+        <button type="button" aria-pressed="false">
+          <span class="mode-dot"></span>
+          Simulated scenario
+        </button>
+        <button type="button" aria-pressed="true">
+          <span class="mode-dot live"></span>
+          Live forecast
+        </button>
+      </div>
+    </div>
+
+    <form class="trip-capsule-form" onsubmit="return false;">
+      <div class="capsule-locations">
+        <div class="capsule-input-pair">
+          <span class="field-hint">From</span>
+          <input type="text" value="Chicago, IL" readonly />
+        </div>
+        <span class="capsule-arrow" aria-hidden="true">→</span>
+        <div class="capsule-input-pair">
+          <span class="field-hint">To</span>
+          <input type="text" value="New York, NY" readonly />
+        </div>
+      </div>
+
+      <div class="capsule-v-divider" aria-hidden="true"></div>
+
+      <div class="capsule-times">
+        <label class="capsule-time-input">
+          <span class="field-hint">Leave</span>
+          <input type="datetime-local" value="2026-10-25T01:30" readonly />
+        </label>
+
+        <div class="capsule-window">
+          <span class="field-hint">Before &amp; after</span>
+          <div class="capsule-window-body">
+            <input type="range" min="0" max="360" step="15" value="120" />
+            <span class="window-size">11:30 PM – 3:30 AM (±2h)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="capsule-v-divider" aria-hidden="true"></div>
+
+      <label class="capsule-alt-check">
+        <input type="checkbox" checked readonly />
+        <span>Alternatives</span>
+      </label>
+
+      <button class="capsule-submit-btn" type="submit">
+        <span>Find Window</span> <span aria-hidden="true">→</span>
+      </button>
+    </form>
+  </header>
+
+  <!-- 3. REFORMATTED DASHBOARD WORKSPACE -->
+  <main id="main" class="main-stage-container">
+    <div class="dashboard-grid">
+
+      <!-- ==================================================================
+           LEFT BOARD (LARGEST BOARD, >58% WIDTH):
+           Main Route Header + Google Map + 6 Metrics + Departure Scrubber
+           ================================================================== -->
+      <section class="unified-bone-card left-map-board" aria-label="Main route map and departure analysis">
+        <div class="bone-card-header">
+          <div class="route-spec-heading">
+            <h2>Chicago <span class="route-arrow">→</span> New York</h2>
+            <p>794 miles · 12h 10m travel time</p>
+            <p class="route-source-note">Google Routes API · Traffic-aware baseline · NOAA GFS Seamless</p>
+          </div>
+
+          <div class="header-badges-wrap">
+            <button type="button" class="pinned-pill-tag">
+              OPTIMAL: 2:15 AM ET
+            </button>
+            <span class="data-mode-tag live">
+              <i></i> LIVE FORECAST
+            </span>
+          </div>
+        </div>
+
+        <p class="analysis-coverage" role="status">
+          Forecast coverage with breaks: Complete. Open-Meteo GFS seamless forecast interpolated to 15-minute route checkpoints.
+        </p>
+
+        <div class="route-options-bar" role="tablist" aria-label="Route alternatives">
+          <button type="button" role="tab" aria-pressed="true">
+            <span class="route-choice-dot"></span>
+            <strong>Direct route</strong>
+            <span>794 mi · 12h 10m</span>
+            <span class="route-choice-exposure">· Higher exposure</span>
+          </button>
+          <button type="button" role="tab" aria-pressed="false">
+            <span class="route-choice-dot"></span>
+            <strong>Alternative route</strong>
+            <span>807 mi · 12h 19m</span>
+            <span class="route-choice-exposure">· Higher exposure</span>
+          </button>
+        </div>
+
+        <!-- LARGE GOOGLE MAP CANVAS -->
+        <div class="map-wrap">
+          <div class="map-stop-notice">
+            S pins: 2/2 visible recommended stops · select a pin for timing
+          </div>
+
+          <!-- Active Google Maps InfoWindow Popup -->
+          <div class="gm-infowindow">
+            <button type="button" class="gm-close" aria-label="Close">✕</button>
+            <strong>S1 · Food break</strong>
+            <div style="color:var(--ink-dim); font-size:11px; margin-bottom:4px;">Oct 25 · 3:45 AM–4:15 AM · 30 min</div>
+            <div>Mile 144.6. Meal break before heavy rain band over northern Ohio.</div>
+          </div>
+
+          <!-- Google Map Vector Representation -->
+          <svg class="map-svg" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid slice">
+            <!-- Google Maps Base Land & Water Palette -->
+            <rect width="960" height="520" fill="#f1f3f4" />
+            <path d="M 0,0 L 960,0 L 960,520 L 0,520 Z" fill="#e8f0e8" opacity="0.55" />
+
+            <!-- Lake Michigan, Lake Erie & Atlantic -->
+            <path d="M 85,0 L 205,0 C 215,105 198,215 160,248 C 122,220 105,120 85,0 Z" fill="#9cc0f9" opacity="0.65" />
+            <path d="M 430,195 C 495,180 580,142 622,158 C 610,202 518,236 445,232 Z" fill="#9cc0f9" opacity="0.65" />
+            <path d="M 870,0 L 960,0 L 960,520 L 835,520 C 865,390 895,250 870,0 Z" fill="#9cc0f9" opacity="0.65" />
+
+            <!-- Highway Network Lines -->
+            <g stroke="#dadce0" stroke-width="2" fill="none">
+              <path d="M 160,248 L 120,390 M 320,120 L 330,440 M 495,215 L 485,450 M 690,140 L 680,450" />
+            </g>
+
+            <!-- State Borders -->
+            <g stroke="#bdc1c6" stroke-width="1.5" stroke-dasharray="6,5" fill="none">
+              <line x1="220" y1="0" x2="220" y2="520" />
+              <line x1="390" y1="0" x2="390" y2="520" />
+              <line x1="590" y1="155" x2="590" y2="520" />
+              <line x1="815" y1="120" x2="815" y2="520" />
+            </g>
+
+            <!-- Map Labels -->
+            <g font-family="Plus Jakarta Sans, sans-serif" font-size="11" font-weight="700" fill="#5f6368" letter-spacing="1.2">
+              <text x="270" y="320">INDIANA</text>
+              <text x="465" y="340">OHIO</text>
+              <text x="660" y="310">PENNSYLVANIA</text>
+            </g>
+            <g font-family="Plus Jakarta Sans, sans-serif" font-size="12" font-weight="600" fill="#3c4043">
+              <text x="108" y="275">Chicago</text>
+              <text x="415" y="258">Toledo</text>
+              <text x="512" y="248">Cleveland</text>
+              <text x="835" y="302">New York</text>
+            </g>
+
+            <!-- Alternative Route Polyline -->
+            <path d="M 160,248 Q 310,222 445,224 T 675,218 T 855,276"
+                  fill="none" stroke="#8b867d" stroke-width="4" opacity="0.55" />
+
+            <!-- Active Route Corridor (Emerald -> Amber -> Crimson -> Emerald) -->
+            <path d="M 160,248 C 235,254 315,248 395,244"
+                  fill="none" stroke="#1d5b43" stroke-width="7" stroke-linecap="round" />
+            <path d="M 395,244 C 445,242 475,245 515,253"
+                  fill="none" stroke="#c87508" stroke-width="7" stroke-linecap="round" />
+            <path d="M 515,253 C 560,262 605,266 655,263"
+                  fill="none" stroke="#b91c1c" stroke-width="7" stroke-linecap="round" />
+            <path d="M 655,263 C 735,260 795,268 855,276"
+                  fill="none" stroke="#1d5b43" stroke-width="7" stroke-linecap="round" />
+
+            <!-- Origin Pin A -->
+            <g transform="translate(160, 248)">
+              <circle r="13" fill="#ffffff" stroke="#1d5b43" stroke-width="3" />
+              <text text-anchor="middle" dy="4" fill="#1d5b43" font-family="Plus Jakarta Sans" font-size="11" font-weight="700">A</text>
+            </g>
+
+            <!-- Stop Pin S1 (Selected) -->
+            <g transform="translate(374, 245)">
+              <circle r="18" fill="#6f281a" stroke="#ffffff" stroke-width="3" />
+              <text text-anchor="middle" dy="4" fill="#ffffff" font-family="Plus Jakarta Sans" font-size="11" font-weight="700">S1</text>
+            </g>
+
+            <!-- Stop Pin S2 -->
+            <g transform="translate(555, 258)">
+              <circle r="16" fill="#6f281a" stroke="#ffffff" stroke-width="3" />
+              <text text-anchor="middle" dy="4" fill="#ffffff" font-family="Plus Jakarta Sans" font-size="11" font-weight="700">S2</text>
+            </g>
+
+            <!-- Gas Price Venue Pins V1 & V2 -->
+            <g transform="translate(535, 232)">
+              <circle r="12" fill="#245c8b" stroke="#ffffff" stroke-width="2.5" />
+              <text text-anchor="middle" dy="3.5" fill="#ffffff" font-family="Plus Jakarta Sans" font-size="9.5" font-weight="700">V1</text>
+            </g>
+            <g transform="translate(576, 234)">
+              <circle r="12" fill="#245c8b" stroke="#ffffff" stroke-width="2.5" />
+              <text text-anchor="middle" dy="3.5" fill="#ffffff" font-family="Plus Jakarta Sans" font-size="9.5" font-weight="700">V2</text>
+            </g>
+
+            <!-- Destination Pin B -->
+            <g transform="translate(855, 276)">
+              <circle r="13" fill="#ffffff" stroke="#1d5b43" stroke-width="3" />
+              <text text-anchor="middle" dy="4" fill="#1d5b43" font-family="Plus Jakarta Sans" font-size="11" font-weight="700">B</text>
+            </g>
+          </svg>
+
+          <div class="map-legend" aria-label="Route exposure legend">
+            <span><i style="background:#1d5b43"></i> Lower exposure</span>
+            <span><i style="background:#c87508"></i> Caution</span>
+            <span><i style="background:#b91c1c"></i> Higher exposure</span>
+            <span><i style="background:#76716a"></i> Unknown</span>
+          </div>
+        </div>
+
+        <!-- 6-COLUMN TRIP METRICS -->
+        <div class="bone-trip-metrics">
+          <div class="trip-metric">
+            <span>Travel Duration</span>
+            <strong>12h 10m</strong>
+          </div>
+          <div class="trip-metric">
+            <span>Arrival with breaks · before detours</span>
+            <strong>2:55 PM ET</strong>
+          </div>
+          <div class="trip-metric">
+            <span>Higher Exposure</span>
+            <strong>35 min</strong>
+          </div>
+          <div class="trip-metric">
+            <span>Peak Condition</span>
+            <strong>Higher exposure</strong>
+          </div>
+          <div class="trip-metric">
+            <span>Expected fuel</span>
+            <strong>31.7 gal</strong>
+            <small>25 highway MPG</small>
+          </div>
+          <div class="trip-metric">
+            <span>Expected gas cost</span>
+            <strong>$128.35</strong>
+            <small>Ohio avg $4.049/gal</small>
+          </div>
+        </div>
+
+        <!-- INTERACTIVE TIMELINE SCRUBBER -->
+        <div class="bone-scrubber-section">
+          <div class="scrubber">
+            <div class="scrubber-title">
+              <div>
+                <span class="mini-label">Departure Scrubber</span>
+                <h2>Slide departure time</h2>
+              </div>
+              <div class="departure-value">
+                <span>Selected</span>
+                <strong>1:30 AM ET</strong>
+              </div>
+            </div>
+
+            <div class="departure-bars">
+              <button type="button" class="departure-bar higher"><span style="height:78%"></span></button>
+              <button type="button" class="departure-bar higher"><span style="height:84%"></span></button>
+              <button type="button" class="departure-bar caution"><span style="height:68%"></span></button>
+              <button type="button" class="departure-bar caution"><span style="height:62%"></span></button>
+              <button type="button" class="departure-bar chosen"><span style="height:58%"></span></button>
+              <button type="button" class="departure-bar caution"><span style="height:50%"></span></button>
+              <button type="button" class="departure-bar"><span style="height:42%"></span></button>
+              <button type="button" class="departure-bar"><span style="height:36%"></span></button>
+              <button type="button" class="departure-bar"><span style="height:34%"></span></button>
+              <button type="button" class="departure-bar"><span style="height:40%"></span></button>
+              <button type="button" class="departure-bar caution"><span style="height:52%"></span></button>
+              <button type="button" class="departure-bar caution"><span style="height:60%"></span></button>
+              <button type="button" class="departure-bar higher"><span style="height:72%"></span></button>
+              <button type="button" class="departure-bar caution"><span style="height:56%"></span></button>
+            </div>
+
+            <input type="range" min="0" max="24" value="5" />
+            <div class="scrubber-labels">
+              <span>11:30 PM ET</span>
+              <span>3:30 AM ET</span>
+            </div>
+          </div>
+
+          <section class="drive-weather" aria-label="Weather along this drive">
+            <span class="mini-label">Along this drive</span>
+            <p>Moderate rain (0.14 in/hr) and 24 mph crosswind gusts near Cleveland between 6:15 AM and 7:30 AM ET.</p>
+          </section>
+
+          <div class="bone-rec-bar">
+            <span class="rec-star-quiet" aria-hidden="true">★</span>
+            <div class="rec-bar-content">
+              <span class="rec-kicker">RECOMMENDED DEPARTURE WINDOW</span>
+              <h4>Leave around 2:15 AM ET for best corridor weather</h4>
+              <p>18 higher-exposure minutes. Compared using forecast exposure thresholds. Baseline travel times are fixed across this window.</p>
+            </div>
+            <button type="button" class="rec-lock-btn">Jump to 2:15 AM</button>
+          </div>
+        </div>
+
+        <div class="bone-card-footer">
+          <span>CORRIDOR WEATHER DISPATCH &middot; HACKOHIO 2026</span>
+          <span>15-MIN WEATHER CHECKPOINTS &middot; 5-MIN DEPARTURES</span>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           RIGHT COLUMN:
+           TOP BOARD = Agentic AI Chat (.journey-agent)
+           BOTTOM BOARD = Route Stops (.route-stops + .stop-planner-mini)
+           ================================================================== -->
+      <div class="right-boards-stack">
+
+        <!-- TOP RIGHT BOARD: AGENTIC AI CHAT (Exact .journey-agent component) -->
+        <section class="unified-bone-card" aria-labelledby="journey-agent-title">
+          <div class="journey-agent">
+            <div class="journey-heading">
+              <div>
+                <span class="journey-kicker">YOUR JOURNEY, WITH CONTEXT</span>
+                <h3 id="journey-agent-title">Ask the road ahead.</h3>
+                <p>Ask about your 1:30 AM departure. Answers use this trip’s forecast, computed stop options and cited travel guidance.</p>
+              </div>
+              <span class="journey-tag">JOURNEY AGENT · RAG</span>
+            </div>
+
+            <div class="journey-preferences">
+              <label>
+                <span>Starting tank · 75%</span>
+                <input type="range" min="15" max="100" step="5" value="75" />
+              </label>
+              <label>
+                <span>Maximum total break time</span>
+                <select>
+                  <option>30 minutes</option>
+                  <option selected>60 minutes</option>
+                  <option>75 minutes</option>
+                  <option>90 minutes</option>
+                </select>
+              </label>
+              <label class="journey-price-choice">
+                <span><input type="checkbox" checked /> Prefer cheaper gas</span>
+                <small>Compare reported prices at planned fuel stops. Availability varies.</small>
+              </label>
+              <label>
+                <span>Fuel grade for price comparison</span>
+                <select>
+                  <option selected>Regular unleaded</option>
+                  <option>Midgrade</option>
+                  <option>Premium</option>
+                  <option>Diesel</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="journey-suggestions">
+              <button type="button">Would a food break help avoid the rain?</button>
+              <button type="button">Can I finish with this fuel?</button>
+              <button type="button">Explain the forecast uncertainty.</button>
+              <button type="button">Find cheaper gas for my trip</button>
+            </div>
+
+            <button type="button">Plan stops &amp; show on map →</button>
+
+            <form class="journey-form" onsubmit="return false;">
+              <textarea rows="2" placeholder="Could I take a food break before the heavy rain?"></textarea>
+              <div class="journey-submit">
+                <small>Your question, selected trip and fuel specs are sent to OpenRouter. Account identity is excluded.</small>
+                <button type="submit">Ask journey agent →</button>
+              </div>
+            </form>
+
+            <!-- Active Agent Turn -->
+            <article class="journey-turn" aria-label="Journey agent answer">
+              <p class="journey-user-question">Plan food and gas stops for this trip from Chicago to New York within my break budget.</p>
+              <p class="journey-answer">I've computed a two-stop plan within your 60-minute break budget for your 2016 Chrysler Town and Country (25 highway MPG). Taking a 30-minute food break at Mile 144.6 (S1) and a 45-minute weather &amp; fuel stop at Mile 161.6 (S2) lowers storm exposure while keeping your tank above the 15% safety reserve.</p>
+              <span class="journey-answer-meta">LIVE FORECAST SNAPSHOT · openrouter/free</span>
+
+              <div class="journey-computed-plan">
+                <strong>Applied on map · Direct route · 2 stops · 75 min of breaks</strong>
+                <div class="journey-map-stop-list">
+                  <button type="button">S1 · Food break · Mile 144.6 · 3:45 AM · 30 min</button>
+                  <button type="button">S2 · Weather break · Mile 161.6 · 4:30 AM · 45 min</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- BOTTOM RIGHT BOARD: ROUTE STOPS & BREAK PLANNER (Exact .route-stops component) -->
+        <section class="unified-bone-card" aria-labelledby="route-stops-title">
+          <div class="route-stops">
+            <div class="route-stops-heading">
+              <div>
+                <span class="route-stops-kicker">STOP PLANNER</span>
+                <h3 id="route-stops-title">Your stops on this route</h3>
+                <p>Direct route · 2 stops · 75 min of breaks · Optimizer stop areas</p>
+                <p>2 of 2 stops visible on map. Hiding a pin keeps the stop in the computed itinerary; arrival times, fuel and weather estimates still include every stop.</p>
+              </div>
+              <div class="route-stops-actions">
+                <button type="button">Show whole route</button>
+                <button type="button">Hide stops</button>
+              </div>
+            </div>
+
+            <div class="route-stop-tabs">
+              <div class="route-stop-choice">
+                <button type="button" aria-pressed="true">
+                  <span>S1</span>
+                  <strong>Food break</strong>
+                  <small>Mile 144.6 · 3:45 AM · 30 min</small>
+                </button>
+                <button type="button" class="route-stop-toggle">Hide pin</button>
+              </div>
+              <div class="route-stop-choice">
+                <button type="button" aria-pressed="false">
+                  <span>S2</span>
+                  <strong>Weather break</strong>
+                  <small>Mile 161.6 · 4:30 AM · 45 min</small>
+                </button>
+                <button type="button" class="route-stop-toggle">Hide pin</button>
+              </div>
+            </div>
+
+            <div class="route-stop-detail">
+              <h4>S1 · Food break at mile 144.6</h4>
+              <p>Arrive 3:45 AM ET · Resume 4:15 AM ET · 30 min break · Tank at arrival 46%</p>
+              <p class="route-stop-note">Meal break. Lets heavier rain band clear northern Ohio checkpoints before arrival.</p>
+
+              <div class="route-stop-search">
+                <button type="button">Find nearby food on map</button>
+                <span>Google Places options around this stop area</span>
+              </div>
+
+              <div class="route-fuel-comparison">
+                <strong>Reported Regular unleaded prices near S2</strong>
+                <p class="fuel-price-status">Lowest recent quote: $3.39/gal at V1 Pilot Travel Center (updated 2h ago).</p>
+                <div class="route-stop-places">
+                  <button type="button" aria-pressed="true">
+                    <span>V1</span>
+                    <strong>Pilot Travel Center · $3.39/gal</strong>
+                    <small>I-80 Exit 161 · Regular unleaded · Updated 2h ago</small>
+                  </button>
+                  <button type="button" aria-pressed="false">
+                    <span>V2</span>
+                    <strong>Shell Station · $3.47/gal</strong>
+                    <small>0.6 mi off highway · Regular unleaded · Updated 4h ago</small>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stop-planner-mini">
+            <div>
+              <strong>2016 Chrysler Town and Country</strong>
+              <span>25 highway MPG · EPA highway MPG · Include a food break</span>
+            </div>
+            <button type="button" class="stop-primary">Plan my stops →</button>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- 4. SIMPLIFIED EDITORIAL FOOTER -->
+  <footer class="planner-footer" role="contentinfo">
+    <div class="planner-footer-inner">
+      <div>
+        <div class="footer-brand-name">w. WeatherWay &middot; HACKOHIO 2026</div>
+        <p class="footer-mission">
+          Created for HackOHIO 2026 at The Ohio State University to provide arrival-matched highway weather forecasting, EPA vehicle fuel range modeling, and grounded AI stop planning.
+        </p>
+      </div>
+      <div class="footer-status-pill">
+        <span class="status-dot-pulse"></span>
+        <span>Operational &middot; Google Maps + Open-Meteo</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const captions = {
+      a: '<strong>Variation A (3 Bone Folio Cards):</strong> Keeps current Hero &amp; Capsule; splits workspace into Left Map Board (59%) + Right AI Chat Board + Bottom-Right Stops Board.',
+      b: '<strong>Variation B (Unified Split Bone Card):</strong> Keeps the single Bone Folio Card wrapper, splitting its interior into a Left Map Pane and a Right AI + Stops Stack.',
+      c: '<strong>Variation C (Compact Hero + Tall Map):</strong> Hides the large headline so the Capsule and 3-Board Dashboard sit immediately above the fold with a 62% Map Board.'
+    };
+
+    function setVariation(v, btn) {
+      document.body.setAttribute('data-variation', v);
+      document.getElementById('variation-caption').innerHTML = captions[v];
+      document.querySelectorAll('.switcher-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

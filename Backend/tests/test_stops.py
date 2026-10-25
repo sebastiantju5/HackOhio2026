@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import app
 from corridor import UTC, evaluate_candidate, iso, parse_time, sample_route
 from demo import demo_forecasts, demo_routes
-from stops import plan_stops
+from stops import evaluate_custom_stops, plan_stops
 
 START = datetime(2026, 10, 24, 21, tzinfo=UTC)
 CAR = {"mpg": 30, "tankGallons": 14, "mpgSource": "Your highway MPG estimate"}
@@ -99,6 +99,48 @@ class StopPlanningTests(unittest.TestCase):
         plan = plan_stops(self.route, self.series, self.candidate, CAR, .25)
         self.assertLessEqual(len(plan["stops"]), 3)
         self.assertLessEqual(plan["totalStopMinutes"], 90)
+
+    def test_evaluate_custom_stops_empty_baseline(self):
+        plan = evaluate_custom_stops(self.route, self.series, self.candidate, [], CAR, 1)
+        self.assertEqual(plan["status"], "planned")
+        self.assertEqual(plan["stops"], [])
+        self.assertEqual(plan["totalStopMinutes"], 0)
+        self.assertEqual(plan["arrival"], self.candidate["arrival"])
+        self.assertIn("checkpointConditions", plan)
+        self.assertIn("segmentLevels", plan)
+        self.assertIn("fuel", plan)
+        self.assertFalse(plan["weatherImproved"])
+
+    def test_evaluate_custom_stops_clamping_and_deduplication(self):
+        max_idx = len(self.route["checkpoints"]) - 2
+        custom = [
+            {"checkpointIndex": 0, "durationMinutes": 3, "fuel": False, "food": False, "weatherBreak": False},
+            {"checkpointIndex": 1, "durationMinutes": 100, "fuel": False, "food": False, "weatherBreak": False},
+            {"checkpointIndex": 999, "durationMinutes": 45, "fuel": False, "food": False, "weatherBreak": True},
+        ]
+        plan = evaluate_custom_stops(self.route, self.series, self.candidate, custom, CAR, 1)
+        self.assertEqual(plan["status"], "planned")
+        self.assertEqual(len(plan["stops"]), 2)
+        self.assertEqual(plan["stops"][0]["checkpointIndex"], 1)
+        self.assertEqual(plan["stops"][0]["durationMinutes"], 5)
+        self.assertEqual(plan["stops"][1]["checkpointIndex"], max_idx)
+        self.assertEqual(plan["stops"][1]["durationMinutes"], 45)
+
+    def test_evaluate_custom_stops_low_fuel_unreachable(self):
+        car = CAR | {"mpg": 20, "tankGallons": 10}
+        plan = evaluate_custom_stops(self.route, self.series, self.candidate, [], car, .15)
+        self.assertEqual(plan["status"], "unreachable")
+        self.assertEqual(plan["stops"], [])
+        self.assertEqual(plan["reason"], "Deleting or moving that fuel stop leaves insufficient fuel to reach the destination with a 15% reserve.")
+
+    def test_evaluate_custom_stops_with_fuel_stop_succeeds(self):
+        plan = evaluate_custom_stops(self.route, self.series, self.candidate,
+                                     [{"checkpointIndex": 1, "durationMinutes": 15, "fuel": True, "food": False, "weatherBreak": False}],
+                                     CAR, .25)
+        self.assertEqual(plan["status"], "planned")
+        self.assertEqual(len(plan["stops"]), 1)
+        self.assertTrue(plan["stops"][0]["fuel"])
+        self.assertGreaterEqual(plan["fuel"]["arrivalTankPercent"], 15)
 
 
 class StopApiTests(unittest.TestCase):

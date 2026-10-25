@@ -292,15 +292,17 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
     <div className="planner-app">
       {/* Editorial Hero Stage */}
       <header className="hero-stage">
-        <div className="hero-kicker">OHIO HIGHWAY WEATHER CORRIDORS</div>
-        <h1 className="hero-headline">
-          Your clearest drive starts with <em>better timing.</em>
-        </h1>
-        <p className="hero-sub">
-          {form.mode === 'live'
-            ? 'Type any starting point and destination. Forecasts follow the drive.'
-            : 'A simulated Columbus to Cleveland drive. Switch to Live forecast to search any place.'}
-        </p>
+        <div className="sr-only">
+          <div className="hero-kicker">OHIO HIGHWAY WEATHER CORRIDORS</div>
+          <h1 className="hero-headline">
+            Know when the road <em>clears</em>.
+          </h1>
+          <p className="hero-sub">
+            {form.mode === 'live'
+              ? 'Type any starting point and destination. Forecasts follow the drive.'
+              : 'A simulated Columbus to Cleveland drive. Switch to Live forecast to search any place.'}
+          </p>
+        </div>
 
         {/* Dedicated Mode Selector Bar */}
         <div className="planner-mode-bar" role="toolbar" aria-label="Forecast data mode">
@@ -417,160 +419,227 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
         {dirty && analysis && <p className="pending-note-hero" role="status">Inputs changed. Click Find Window to re-evaluate.</p>}
       </header>
 
-      {/* Main Unified Bone Card */}
+      {/* 3-Board Dashboard Grid */}
       <main id="main" className="main-stage-container">
-        <section className="unified-bone-card" aria-busy={busy}>
-          {/* Card Topbar */}
-          <div className="bone-card-header">
-            <div className="route-spec-heading">
-              <h2>{analysis ? <>{analysis.origin.name.split(',')[0]} <span className="route-arrow">→</span> {analysis.destination.name.split(',')[0]}</> : 'Explore the road ahead'}</h2>
-              <p>{route ? `${miles(route.distanceMeters)} miles · ${duration(route.durationSeconds)} travel time` : 'Select endpoints and evaluate arrival weather'}</p>
-              {analysis && <p className="route-source-note">{route?.provider}{analysis.dataMode === 'live' && ` · ${route?.trafficAware ? 'Traffic-aware baseline' : 'No live traffic'}`} · {weatherSource?.model}</p>}
+        <div className="dashboard-grid">
+          {/* Left Board: Main Map, Metrics, Scrubber */}
+          <section className="unified-bone-card left-map-board" aria-busy={busy} aria-label="Main route map and departure analysis">
+            {/* Card Topbar */}
+            <div className="bone-card-header">
+              <div className="route-spec-heading">
+                <h2>{analysis ? <>{analysis.origin.name.split(',')[0]} <span className="route-arrow">→</span> {analysis.destination.name.split(',')[0]}</> : 'Explore the road ahead'}</h2>
+                <p>{route ? `${miles(route.distanceMeters)} miles · ${duration(route.durationSeconds)} travel time` : 'Select endpoints and evaluate arrival weather'}</p>
+                {analysis && <p className="route-source-note">{route?.provider}{analysis.dataMode === 'live' && ` · ${route?.trafficAware ? 'Traffic-aware baseline' : 'No live traffic'}`} · {weatherSource?.model}</p>}
+              </div>
+
+              <div className="header-badges-wrap">
+                <span className={`data-mode-tag ${analysis?.dataMode === 'live' ? 'live' : ''}`}>
+                  <i /> {analysis ? (analysis.dataMode === 'live' ? 'LIVE FORECAST' : 'SIMULATED') : 'AWAITING ANALYSIS'}
+                </span>
+              </div>
             </div>
 
-            <div className="header-badges-wrap">
-              {recommended && (
-                <button type="button" className="pinned-pill-tag" onClick={useRecommendation} title="Jump to optimal departure">
-                  OPTIMAL: {clock(recommended.departure, analysis?.timeZone)} ET
-                </button>
-              )}
-              <span className={`data-mode-tag ${analysis?.dataMode === 'live' ? 'live' : ''}`}>
-                <i /> {analysis ? (analysis.dataMode === 'live' ? 'LIVE FORECAST' : 'SIMULATED') : 'AWAITING ANALYSIS'}
-              </span>
-            </div>
-          </div>
-
-          {analysis?.routingNotice && <p className="analysis-notice" role="status">{analysis.routingNotice}</p>}
-          {analysis && <p className={`analysis-coverage ${coverageComplete ? '' : 'partial'}`} role="status">Forecast coverage{activePlan ? ' with breaks' : ''}: {coverageComplete ? 'Complete' : `Partial · ${Math.round(displayCandidate?.unknownMinutes || 0)} driving minutes unknown`}. {weatherSource?.note}</p>}
-
-          {/* Compared Alternatives */}
-          {analysis?.routes?.length > 1 && (
-            <div className="route-options-bar" role="tablist" aria-label="Route alternatives">
-              {analysis.routes.map(r => {
-                const bestForR = analysis.candidates
-                  .filter(c => c.routeId === r.id)
-                  .sort((a, b) => a.weightedExposure - b.weightedExposure)[0]
-                const active = r.id === routeId
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    role="tab"
-                    aria-pressed={active}
-                    aria-selected={active}
-                    onClick={() => {
-                      setRouteId(r.id)
-                      setDepartureIndex(0)
-                    }}
-                  >
-                    <span className="route-choice-dot" />
-                    <strong>{r.name}</strong>
-                    <span>{miles(r.distanceMeters)} mi · {duration(r.durationSeconds)}</span>
-                    {bestForR && LEVELS[bestForR.level] && (
-                      <span className="route-choice-exposure">· {LEVELS[bestForR.level].label}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Map Layout */}
-          <div className="bone-split-layout" ref={mapRegion}>
-            <RouteMap
-              route={route}
-              candidate={displayCandidate}
-              stops={activePlan?.stops}
-              hiddenStops={hiddenStops}
-              focus={activePlan ? mapFocus : EMPTY_FOCUS}
-              onStopSelect={selectMapStop}
-              places={activePlan ? nearbyPlaces : EMPTY_PLACES}
-              timeZone={analysis?.timeZone}
-              onSelect={setSelectedPoint}
-              originPlace={analysis?.origin || form.originPlace}
-              destinationPlace={analysis?.destination || form.destinationPlace}
-            />
-          </div>
-          {activePlan?.stops.length > 0 && <RouteStops plan={activePlan} route={route} dataMode={analysis.dataMode} timeZone={analysis.timeZone} focus={mapFocus} hiddenStops={hiddenStops} onToggleStop={toggleStop}
-            onSelect={index => { selectMapStop(index); requestAnimationFrame(revealMap) }} onOverview={() => { selectMapStop(null); requestAnimationFrame(revealMap) }} onClear={() => applyPlan(null)} onPlaces={setNearbyPlaces}
-            onVenueSelect={(id, index) => { selectMapStop(index, id); requestAnimationFrame(revealMap) }} />}
-
-          {/* Quick Metrics Bar */}
-          <div className="bone-trip-metrics">
-            <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
-            <Metric label={activePlan ? 'Arrival with breaks · before detours' : 'Estimated Arrival'}>
-              {displayCandidate?.arrival ? `${clock(displayCandidate.arrival, analysis?.timeZone)} ET` : '—'}
-            </Metric>
-            <Metric label="Higher Exposure">
-              {displayCandidate ? (displayCandidate.higherMinutes > 0 ? `${displayCandidate.higherMinutes} min` : '0 min') : '—'}
-            </Metric>
-            <Metric label="Peak Condition">
-              {displayCandidate?.level && LEVELS[displayCandidate.level] ? LEVELS[displayCandidate.level].label : '—'}
-            </Metric>
-            <Metric label="Expected fuel" note={fuel ? `${fuel.mpg} highway MPG` : ''}>
-              {fuel ? `${fuel.gallons.toFixed(1)} gal` : '—'}
-            </Metric>
-            <Metric label="Expected gas cost" note={fuel?.quote ? `${fuel.quote.area} avg $${fuel.quote.dollarsPerGallon.toFixed(3)}/gal` : ''}>
-              {fuel?.cost != null ? dollars(fuel.cost) : '—'}
-            </Metric>
-          </div>
-
-          {/* Interactive Timeline Scrubber */}
-          <div className="bone-scrubber-section">
-            <DepartureScrubber
-              candidates={candidates}
-              selectedIndex={departureIndex}
-              recommendedId={recommended?.id}
-              onChange={setDepartureIndex}
-              timeZone={analysis?.timeZone}
-            />
-            {displayCandidate && <section className="drive-weather" aria-label="Weather along this drive">
-              <span className="mini-label">Along this drive</span>
-              <p>{summarizeDrive(displayCandidate, analysis?.timeZone)}</p>
-            </section>}
-
-            {recommended && (
-              <div className="bone-rec-bar">
-                <span className="rec-star-quiet" aria-hidden="true">★</span>
-                <div className="rec-bar-content">
-                  <span className="rec-kicker">RECOMMENDED DEPARTURE WINDOW</span>
-                  <h4>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</h4>
-                  <p>
-                    {Math.round(recommended.higherMinutes)} higher-exposure minutes. {analysis.recommendation?.allHigherExposure ? 'Every compared departure includes higher exposure.' : 'Compared using forecast exposure thresholds.'} Baseline travel times are fixed across this window.
-                  </p>
+            {analysis && displayCandidate && (
+              <div className="bone-top-briefing">
+                <div className="top-drive-summary">
+                  <span className="mini-label">ALONG THIS DRIVE · LEAVING {clock(displayCandidate.departure, analysis?.timeZone)} ET</span>
+                  <p className="top-drive-weather-copy">{summarizeDrive(displayCandidate, analysis?.timeZone)}</p>
                 </div>
-                <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
-                  Jump to {clock(recommended.departure, analysis?.timeZone)}
-                </button>
+                <div className="top-rec-column">
+                  {recommended ? (
+                    <div className="bone-rec-bar">
+                      <span className="rec-star-quiet" aria-hidden="true">★</span>
+                      <div className="rec-bar-content">
+                        <span className="rec-kicker">RECOMMENDED DEPARTURE WINDOW</span>
+                        <h4>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</h4>
+                        <p>
+                          {Math.round(recommended.higherMinutes)} higher-exposure minutes.{' '}
+                          {analysis.recommendation?.allHigherExposure
+                            ? 'Every compared departure includes higher exposure.'
+                            : 'Compared using forecast exposure thresholds.'}
+                        </p>
+                      </div>
+                      <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
+                        Jump to {clock(recommended.departure, analysis?.timeZone)}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bone-rec-notice">
+                      <p className="analysis-notice" role="status">
+                        {analysis.recommendation?.reason || 'No complete forecast comparison is available.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+
+            {analysis?.routingNotice && <p className="analysis-notice" role="status">{analysis.routingNotice}</p>}
+            {analysis && <p className={`analysis-coverage ${coverageComplete ? '' : 'partial'}`} role="status">Forecast coverage{activePlan ? ' with breaks' : ''}: {coverageComplete ? 'Complete' : `Partial · ${Math.round(displayCandidate?.unknownMinutes || 0)} driving minutes unknown`}. {weatherSource?.note}</p>}
+
+            {/* Compared Alternatives */}
+            {analysis?.routes?.length > 1 && (
+              <div className="route-options-bar" role="tablist" aria-label="Route alternatives">
+                {analysis.routes.map(r => {
+                  const bestForR = analysis.candidates
+                    .filter(c => c.routeId === r.id)
+                    .sort((a, b) => a.weightedExposure - b.weightedExposure)[0]
+                  const active = r.id === routeId
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      role="tab"
+                      aria-pressed={active}
+                      aria-selected={active}
+                      onClick={() => {
+                        setRouteId(r.id)
+                        setDepartureIndex(0)
+                      }}
+                    >
+                      <span className="route-choice-dot" />
+                      <strong>{r.name}</strong>
+                      <span>{miles(r.distanceMeters)} mi · {duration(r.durationSeconds)}</span>
+                      {bestForR && LEVELS[bestForR.level] && (
+                        <span className="route-choice-exposure">· {LEVELS[bestForR.level].label}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Map Layout */}
+            <div className="bone-split-layout" ref={mapRegion}>
+              <RouteMap
+                route={route}
+                candidate={displayCandidate}
+                stops={activePlan?.stops}
+                hiddenStops={hiddenStops}
+                focus={activePlan ? mapFocus : EMPTY_FOCUS}
+                onStopSelect={selectMapStop}
+                places={activePlan ? nearbyPlaces : EMPTY_PLACES}
+                timeZone={analysis?.timeZone}
+                onSelect={setSelectedPoint}
+                originPlace={analysis?.origin || form.originPlace}
+                destinationPlace={analysis?.destination || form.destinationPlace}
+              />
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="bone-trip-metrics">
+              <Metric label="Travel Duration">{route ? duration(route.durationSeconds) : '—'}</Metric>
+              <Metric label={activePlan ? 'Arrival with breaks · before detours' : 'Estimated Arrival'}>
+                {displayCandidate?.arrival ? `${clock(displayCandidate.arrival, analysis?.timeZone)} ET` : '—'}
+              </Metric>
+              <Metric label="Higher Exposure">
+                {displayCandidate ? (displayCandidate.higherMinutes > 0 ? `${displayCandidate.higherMinutes} min` : '0 min') : '—'}
+              </Metric>
+              <Metric label="Peak Condition">
+                {displayCandidate?.level && LEVELS[displayCandidate.level] ? LEVELS[displayCandidate.level].label : '—'}
+              </Metric>
+              <Metric label="Expected fuel" note={fuel ? `${fuel.mpg} highway MPG` : ''}>
+                {fuel ? `${fuel.gallons.toFixed(1)} gal` : '—'}
+              </Metric>
+              <Metric label="Expected gas cost" note={fuel?.quote ? `${fuel.quote.area} avg $${fuel.quote.dollarsPerGallon.toFixed(3)}/gal` : ''}>
+                {fuel?.cost != null ? dollars(fuel.cost) : '—'}
+              </Metric>
+            </div>
+
+            {/* Interactive Timeline Scrubber */}
+            <div className="bone-scrubber-section">
+              <DepartureScrubber
+                candidates={candidates}
+                selectedIndex={departureIndex}
+                recommendedId={recommended?.id}
+                onChange={setDepartureIndex}
+                timeZone={analysis?.timeZone}
+              />
+            </div>
+
+            {/* Card Footer */}
+            <div className="bone-card-footer">
+              <span>CORRIDOR WEATHER DISPATCH &middot; HACKOHIO 2026</span>
+              <span>15-MIN WEATHER CHECKPOINTS &middot; 5-MIN DEPARTURES</span>
+            </div>
+          </section>
+
+          {/* Right Column Stack */}
+          <div className="right-boards-stack">
+            {/* Top-Right Board: Journey Agent */}
+            <section className="unified-bone-card right-agent-board" aria-label="Journey agent">
+              {analysis && candidate ? (
+                <JourneyAgent
+                  analysis={analysis}
+                  candidate={candidate}
+                  session={session}
+                  vehicle={vehicle}
+                  route={route}
+                  onAccount={onAccount}
+                  onApply={applyPlan}
+                  onShowStop={showPlanStop}
+                  appliedPlan={activePlan}
+                />
+              ) : (
+                <div className="journey-agent">
+                  <div className="journey-heading">
+                    <div>
+                      <span className="journey-kicker">YOUR JOURNEY, WITH CONTEXT</span>
+                      <h3>Ask the road ahead.</h3>
+                      <p>Analyze a route to ask questions about your departure's forecast, computed stop options, and cited travel guidance.</p>
+                    </div>
+                    <span className="journey-tag">JOURNEY AGENT · RAG</span>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Bottom-Right Board: Route Stops and Break Planner */}
+            <section className="unified-bone-card right-stops-board" aria-label="Route stops and break planner">
+              {activePlan?.stops.length > 0 && (
+                <RouteStops
+                  plan={activePlan}
+                  route={route}
+                  dataMode={analysis.dataMode}
+                  timeZone={analysis.timeZone}
+                  focus={mapFocus}
+                  hiddenStops={hiddenStops}
+                  onToggleStop={toggleStop}
+                  onSelect={index => { selectMapStop(index); requestAnimationFrame(revealMap) }}
+                  onOverview={() => { selectMapStop(null); requestAnimationFrame(revealMap) }}
+                  onClear={() => applyPlan(null)}
+                  onPlaces={setNearbyPlaces}
+                  onVenueSelect={(id, index) => { selectMapStop(index, id); requestAnimationFrame(revealMap) }}
+                />
+              )}
+
+              {analysis && candidate ? (
+                <StopPlanner
+                  analysis={analysis}
+                  candidate={candidate}
+                  vehicle={vehicle}
+                  vehicleError={vehicleError}
+                  vehicleReady={vehicleReady}
+                  session={session}
+                  onAccount={onAccount}
+                  onApply={applyPlan}
+                  applied={Boolean(activePlan) && !activePlan.journeyPlanId}
+                  onSelect={showPlanStop}
+                />
+              ) : (
+                <div className="stop-planner">
+                  <div className="stop-intro">
+                    <div>
+                      <span className="stop-kicker">WEATHER-AWARE BREAK STOPS</span>
+                      <h3>Break stops</h3>
+                      <p>Analyze a route on the left to plan fuel, food, and weather-avoidance stops along your corridor.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
-          {analysis && !recommended && <p className="analysis-notice" role="status">{analysis.recommendation?.reason || 'No complete forecast comparison is available.'}</p>}
-
-          {/* Weather-Aware Break Stops Module */}
-          {analysis && candidate && (
-            <StopPlanner
-              analysis={analysis}
-              candidate={candidate}
-              vehicle={vehicle}
-              vehicleError={vehicleError}
-              vehicleReady={vehicleReady}
-              session={session}
-              onAccount={onAccount}
-              onApply={applyPlan}
-              applied={Boolean(activePlan) && !activePlan.journeyPlanId}
-              onSelect={showPlanStop}
-            />
-          )}
-
-          {analysis && candidate && <JourneyAgent analysis={analysis} candidate={candidate} session={session} vehicle={vehicle} route={route} onAccount={onAccount} onApply={applyPlan} onShowStop={showPlanStop} appliedPlan={activePlan} />}
-
-          {/* Card Footer */}
-          <div className="bone-card-footer">
-            <span>CORRIDOR WEATHER DISPATCH &middot; HACKOHIO 2026</span>
-            <span>15-MIN WEATHER CHECKPOINTS &middot; 5-MIN DEPARTURES</span>
-          </div>
-        </section>
+        </div>
       </main>
 
       {/* Simplified Editorial Footer */}

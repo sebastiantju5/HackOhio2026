@@ -25,6 +25,7 @@ test('map accepts the exact optimizer stop coordinates for the selected route an
   assert.equal(planMatchesSelection({ ...plan, analysisId: 'old' }, 'analysis', candidate, route), false)
   assert.equal(planMatchesSelection(plan, 'analysis', { ...candidate, id: 'another-departure' }, route), false)
   assert.equal(planMatchesSelection(plan, 'analysis', candidate, { ...route, id: 'another-route' }), false)
+  assert.equal(planMatchesSelection({ ...plan, stops: [], stopsModified: true }, 'analysis', candidate, route), true)
 })
 
 test('map rejects fabricated, invalid or mismatched stop geometry and exposure arrays', () => {

@@ -436,7 +436,34 @@
 .signed-in-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
+}
+
+.signed-in-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.header-signout-btn {
+  background: transparent;
+  color: var(--hazard-red);
+  border: 1px solid #fee2e2;
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.header-signout-btn:hover {
+  background: #fee2e2;
+  border-color: var(--hazard-red);
 }
 
 .user-avatar-large {
@@ -544,5 +571,16 @@
   .auth-back-nav {
     top: 16px;
     left: 20px;
+  }
+}
+
+@media (max-width: 540px) {
+  .signed-in-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .header-signout-btn {
+    align-self: flex-start;
   }
 }
