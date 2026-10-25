@@ -28,6 +28,19 @@ class VehicleTests(unittest.TestCase):
             with self.subTest(body=body), self.assertRaises(TripError):
                 validate_vehicle(body)
 
+    def test_common_model_name_matches_epa_variants(self):
+        def payload(url, provider):
+            if "menu/make" in url:
+                return {"menuItem": [{"text": "Honda", "value": "Honda"}]}
+            if "menu/model" in url:
+                return {"menuItem": [{"text": "Civic 4Dr", "value": "Civic 4Dr"}, {"text": "Accord", "value": "Accord"}]}
+            if "model=Civic+4Dr" in url:
+                return {"menuItem": {"value": "99", "text": "Automatic"}}
+            return None
+        with patch('vehicles.catalog_cache', BoundedCache()), patch('vehicles.request_json', side_effect=payload):
+            options = vehicle_options(2021, 'Honda', 'Civic')
+        self.assertEqual(options, [{"id": "99", "label": "Automatic"}])
+
     def test_single_and_multiple_menu_results_and_no_match(self):
         for payload, count in (({"menuItem": {"value": "123", "text": "Automatic"}}, 1),
                                ({"menuItem": [{"value": "123", "text": "Auto"}, {"value": "456", "text": "Manual"}]}, 2), ({}, 0)):
@@ -40,6 +53,14 @@ class VehicleTests(unittest.TestCase):
         self.assertEqual(profile["mpg"], 39)
         self.assertEqual(profile["make"], "Toyota")
         self.assertEqual(profile["mpgSource"], "EPA highway MPG")
+        self.assertNotIn("tankGallons", profile)
+
+    def test_published_range_becomes_tank_gallons_and_ignores_client_tank(self):
+        rated = EPA | {"range": 420, "rangeA": 53, "comb08": 42, "fuelType2": "Electricity"}
+        with patch('vehicles.catalog_cache', BoundedCache()), patch('vehicles.request_json', return_value=rated):
+            profile = validate_vehicle(MANUAL | {"epaId": "123", "tankGallons": 30})
+        self.assertEqual(profile["tankGallons"], 8.7)
+        self.assertEqual(profile["tankSource"], "FuelEconomy.gov published range")
 
     def test_mpge_is_not_gasoline_mpg(self):
         with patch('vehicles.catalog_cache', BoundedCache()), patch('vehicles.request_json', return_value=EPA | {"fuelType1": "Electricity", "highway08": 120}):

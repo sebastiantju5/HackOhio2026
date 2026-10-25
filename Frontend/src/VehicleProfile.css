@@ -13,6 +13,8 @@
 .vehicle-primary, .vehicle-secondary { padding: 11px 16px; border-radius: 8px; }
 .vehicle-primary { background: var(--terracotta); color: white; border: 1px solid var(--terracotta); }
 .vehicle-secondary { background: transparent; border: 1px solid var(--border-dark); color: var(--terracotta); }
+.vehicle-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 4px; }
+.vehicle-specs strong { display: block; margin-top: 4px; color: var(--ink); font-size: 18px; font-weight: 600; }
 .vehicle-profile .vehicle-source { font-size: 11px; }
 .vehicle-source button { background: none; border: 0; padding: 0; text-decoration: underline; color: var(--terracotta); }
 .vehicle-profile .vehicle-error { color: #a32424; }

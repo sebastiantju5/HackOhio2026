@@ -23,19 +23,78 @@ def vehicle_year(value):
     return value
 
 
+MAKE_ALIASES = {"chevy": "chevrolet", "vw": "volkswagen", "mercedes": "mercedesbenz", "benz": "mercedesbenz"}
+
+
+def compact_name(value):
+    return "".join(ch for ch in value.lower() if ch.isalnum())
+
+
+def menu_rows(data):
+    items = data.get("menuItem", []) if isinstance(data, dict) else []
+    if isinstance(items, dict):
+        items = [items]
+    return [item for item in items if isinstance(item, dict) and item.get("text") and item.get("value")]
+
+
+def configuration_options(data):
+    return [{"id": str(item["value"]), "label": item["text"]} for item in menu_rows(data)
+            if str(item.get("value", "")).isdigit()][:40]
+
+
+def matching_menu_rows(typed, rows):
+    needle = MAKE_ALIASES.get(compact_name(typed), compact_name(typed))
+    exact = [row for row in rows if compact_name(row["text"]) == needle]
+    if exact:
+        return exact
+    starts = [row for row in rows if compact_name(row["text"]).startswith(needle)]
+    if starts:
+        return starts
+    return [row for row in rows if needle and needle in compact_name(row["text"])]
+
+
 def vehicle_options(year, make, model):
     year = vehicle_year(year)
     make, model = text_field({"make": make}, "make"), text_field({"model": model}, "model")
-    query = urlencode({"year": year, "make": make, "model": model})
 
     def load():
-        data = request_json(BASE + "menu/options?" + query, "FuelEconomy.gov")
-        items = data.get("menuItem", []) if isinstance(data, dict) else []
-        if isinstance(items, dict):
-            items = [items]
-        return [{"id": str(item["value"]), "label": item["text"]} for item in items
-                if isinstance(item, dict) and str(item.get("value", "")).isdigit() and item.get("text")][:40]
-    return catalog_cache.get_or_load(("options", year, make.lower(), model.lower()), load)
+        direct = configuration_options(request_json(BASE + "menu/options?" + urlencode({"year": year, "make": make, "model": model}), "FuelEconomy.gov"))
+        if direct:
+            return direct
+        makes = matching_menu_rows(make, menu_rows(request_json(BASE + f"menu/make?year={year}", "FuelEconomy.gov")))
+        if len(makes) != 1:
+            return []
+        canonical_make = makes[0]["value"]
+        models = matching_menu_rows(model, menu_rows(request_json(
+            BASE + "menu/model?" + urlencode({"year": year, "make": canonical_make}), "FuelEconomy.gov")))
+        found = []
+        for item in models[:12]:
+            label_prefix = f"{item['text']} · " if len(models) > 1 else ""
+            for option in configuration_options(request_json(
+                    BASE + "menu/options?" + urlencode({"year": year, "make": canonical_make, "model": item["value"]}), "FuelEconomy.gov")):
+                found.append({"id": option["id"], "label": label_prefix + option["label"]})
+                if len(found) >= 40:
+                    return found
+        return found
+    return catalog_cache.get_or_load(("options", year, compact_name(make), compact_name(model)), load)
+
+
+def published_tank_gallons(data):
+    """US gallons implied by FuelEconomy.gov range and combined MPG. Conventional cars publish 0 miles, so they have no tank size."""
+    try:
+        miles = float(data.get("range") or 0)
+        rate = float(data.get("comb08") or 0)
+        alternate = float(data.get("rangeA") or 0)
+    except (TypeError, ValueError):
+        return None
+    if 0 < alternate < miles:
+        miles -= alternate
+    if miles <= 0 or rate <= 0:
+        return None
+    gallons = round(miles / rate, 1)
+    if 1 <= gallons <= 80:
+        return gallons
+    return None
 
 
 def epa_vehicle(vehicle_id):
@@ -51,10 +110,15 @@ def epa_vehicle(vehicle_id):
             mpg = float(data["highway08"])
             if not 5 <= mpg <= 150:
                 raise ValueError()
-            return {"year": int(data["year"]), "make": data["make"], "model": data["model"],
-                    "mpg": mpg, "mpgSource": "EPA highway MPG", "epaId": vehicle_id,
-                    "configuration": f"{data.get('trany', '')} · {data.get('cylinders', '?')} cyl · {data.get('displ', '?')} L",
-                    "fuelType": fuel}
+            profile = {"year": int(data["year"]), "make": data["make"], "model": data["model"],
+                       "mpg": mpg, "mpgSource": "EPA highway MPG", "epaId": vehicle_id,
+                       "configuration": f"{data.get('trany', '')} · {data.get('cylinders', '?')} cyl · {data.get('displ', '?')} L",
+                       "fuelType": fuel}
+            tank = published_tank_gallons(data)
+            if tank is not None:
+                profile["tankGallons"] = tank
+                profile["tankSource"] = "FuelEconomy.gov published range"
+            return profile
         except TripError:
             raise
         except (KeyError, TypeError, ValueError):
@@ -65,19 +129,24 @@ def epa_vehicle(vehicle_id):
 def validate_vehicle(data):
     if not isinstance(data, dict):
         raise TripError("Expected a vehicle profile.")
+    if data.get("epaId"):
+        vehicle_year(data.get("year"))
+        text_field(data, "make")
+        text_field(data, "model")
+        epa_id = data["epaId"] if isinstance(data["epaId"], str) else ""
+        return epa_vehicle(epa_id)
+    fuel = data.get("fuelType", "Regular Gasoline")
+    if fuel not in ("Regular Gasoline", "Premium Gasoline", "Midgrade Gasoline", "Diesel"):
+        raise TripError("Choose gasoline or diesel.")
+    vehicle = {"year": vehicle_year(data.get("year")), "make": text_field(data, "make"),
+               "model": text_field(data, "model"), "fuelType": fuel}
+    if "mpg" not in data and "tankGallons" not in data:
+        return vehicle
     capacity = data.get("tankGallons")
     if not finite_number(capacity) or not 1 <= capacity <= 80:
         raise TripError("Enter fuel tank capacity between 1 and 80 US gallons.")
-    if data.get("epaId"):
-        vehicle = epa_vehicle(data["epaId"])
-    else:
-        mpg = data.get("mpg")
-        if not finite_number(mpg) or not 5 <= mpg <= 150:
-            raise TripError("Enter estimated highway fuel economy between 5 and 150 MPG.")
-        fuel = data.get("fuelType", "Regular Gasoline")
-        if fuel not in ("Regular Gasoline", "Premium Gasoline", "Midgrade Gasoline", "Diesel"):
-            raise TripError("Choose gasoline or diesel for gas-stop planning.")
-        vehicle = {"year": vehicle_year(data.get("year")), "make": text_field(data, "make"),
-                   "model": text_field(data, "model"), "mpg": float(mpg), "mpgSource": "Your highway MPG estimate",
-                   "epaId": None, "configuration": "Manually entered", "fuelType": fuel}
-    return vehicle | {"tankGallons": float(capacity)}
+    mpg = data.get("mpg")
+    if not finite_number(mpg) or not 5 <= mpg <= 150:
+        raise TripError("Enter estimated highway fuel economy between 5 and 150 MPG.")
+    return {**vehicle, "mpg": float(mpg), "mpgSource": "Your highway MPG estimate",
+            "epaId": None, "configuration": "Manually entered", "tankGallons": float(capacity)}
