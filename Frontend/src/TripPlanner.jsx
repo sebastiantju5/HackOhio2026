@@ -7,6 +7,8 @@ import PlaceField from './PlaceField.jsx'
 import { geocodeAddress, getGoogleRoutes, mapsKey } from './googleMaps.js'
 import './TripPlanner.css'
 
+const CURRENT_YEAR = new Date().getFullYear()
+
 const PLACES = [
   { name: 'Columbus, OH', coordinates: [-82.9988, 39.9612] },
   { name: 'Cleveland, OH', coordinates: [-81.6944, 41.4993] },
@@ -482,9 +484,134 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
         </section>
       </main>
 
-      {/* Atmospheric Footer */}
-      <footer className="planner-footer">
-        <p>WeatherWay Ohio Corridor Dispatch &middot; Open-Meteo &middot; NOAA HRRR &middot; Mapbox / OSRM &middot; Leaflet</p>
+      {/* Editorial Corridor Dispatch Footer */}
+      <footer className="planner-footer" role="contentinfo">
+        <div className="planner-footer-inner">
+          {/* Top Tier: Masthead, Brand Statement & Operational Status */}
+          <div className="footer-masthead">
+            <div className="footer-brand-lockup">
+              <div
+                className="footer-brand"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && window.scrollTo({ top: 0, behavior: 'smooth' })}
+              >
+                <span className="footer-symbol" aria-hidden="true">w.</span>
+                <div className="footer-brand-title">
+                  <span className="footer-brand-name">WeatherWay</span>
+                  <span className="footer-brand-sub">OHIO CORRIDOR DISPATCH</span>
+                </div>
+              </div>
+              <p className="footer-mission">
+                Arrival-matched highway weather forecasting and departure window optimization across Ohio and North American interstates. Synchronizing high-resolution NOAA simulations, EPA vehicle ranges, and precision hazard analysis.
+              </p>
+            </div>
+
+            <div className="footer-status-card">
+              <div className="footer-status-pill">
+                <span className="status-dot-pulse" aria-hidden="true" />
+                <span className="status-text-live">All Corridor Engines Nominal</span>
+              </div>
+              <div className="footer-meta-tags">
+                <span className="meta-tag">NOAA HRRR (3km)</span>
+                <span className="meta-tag">Open-Meteo 15-Min</span>
+                <span className="meta-tag">Mapbox &middot; OSRM</span>
+                <span className="meta-tag">EPA FuelEconomy</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Middle Tier: Directory Grid */}
+          <div className="footer-directory">
+            <div className="footer-column">
+              <h4 className="footer-column-heading">Monitored Corridors</h4>
+              <ul className="footer-links">
+                <li><span className="corridor-bullet">I-71</span> Cincinnati &middot; Columbus &middot; Cleveland</li>
+                <li><span className="corridor-bullet">I-75</span> Dayton &middot; Findlay &middot; Toledo</li>
+                <li><span className="corridor-bullet">I-90</span> Lake Erie Turnpike &middot; Ashtabula</li>
+                <li><span className="corridor-bullet">I-70</span> Richmond &middot; Springfield &middot; Wheeling</li>
+              </ul>
+            </div>
+
+            <div className="footer-column">
+              <h4 className="footer-column-heading">Meteorological Sources</h4>
+              <ul className="footer-links">
+                <li><a href="https://rapidrefresh.noaa.gov/hrrr/" target="_blank" rel="noreferrer">NOAA HRRR Rapid Refresh</a></li>
+                <li><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo Weather APIs</a></li>
+                <li><a href="https://www.weather.gov/" target="_blank" rel="noreferrer">National Weather Service (NWS)</a></li>
+                <li><a href="https://fueleconomy.gov/" target="_blank" rel="noreferrer">FuelEconomy.gov Vehicle Specs</a></li>
+              </ul>
+            </div>
+
+            <div className="footer-column">
+              <h4 className="footer-column-heading">Dispatcher Navigation</h4>
+              <ul className="footer-links">
+                <li>
+                  <button type="button" className="footer-action-link" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                    Departure Window Scrubber &uarr;
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="footer-action-link" onClick={onAccount}>
+                    {session?.user ? 'Operator Profile & Garage' : 'Dispatcher Sign In / Register'}
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="footer-action-link" onClick={() => changeMode(form.mode === 'demo' ? 'live' : 'demo')}>
+                    Mode: {form.mode === 'demo' ? 'Simulated (Click for Live)' : 'Live Forecast (Click for Sim)'}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="footer-action-link"
+                    onClick={() => {
+                      const el = document.querySelector('.stop-planner')
+                      if (el) el.scrollIntoView({ behavior: 'smooth' })
+                      else window.scrollTo({ top: 400, behavior: 'smooth' })
+                    }}
+                  >
+                    Fuel &amp; Food Stop Planner
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div className="footer-column">
+              <h4 className="footer-column-heading">HackOHIO Dispatch</h4>
+              <p className="footer-edition-text">
+                Designed and engineered for HackOHIO 2026. Built with precision geographic coordinate interpolation, dynamic route caching, and the Terracotta Editorial visual framework.
+              </p>
+              <div className="footer-edition-badges">
+                <span className="edition-badge">HackOHIO / 2026</span>
+                <span className="edition-badge">The Ohio State University</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Tier: Colophon & Legal Rail */}
+          <div className="footer-colophon">
+            <div className="footer-legal">
+              <p className="footer-disclaimer">
+                Safety Notice: WeatherWay exposure indices model ambient weather along road segments and do not supersede official ODOT, state highway patrol, or emergency travel bans.
+              </p>
+              <p className="footer-copyright">
+                &copy; {CURRENT_YEAR} WeatherWay &middot; Ohio Interstate Dispatch System.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="footer-back-to-top"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              aria-label="Back to top of dispatch"
+            >
+              <span>Back to top</span>
+              <span className="back-arrow" aria-hidden="true">&uarr;</span>
+            </button>
+          </div>
+        </div>
       </footer>
     </div>
   )
