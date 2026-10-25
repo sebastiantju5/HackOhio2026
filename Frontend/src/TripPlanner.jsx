@@ -4,7 +4,7 @@ import DepartureScrubber from './DepartureScrubber.jsx'
 import CheckpointPanel from './CheckpointPanel.jsx'
 import { LEVELS, TIME_ZONE, clock, day, duration, fromWallInput, miles, toWallInput } from './format.js'
 import PlaceField from './PlaceField.jsx'
-import { geocodeAddress, mapsKey } from './googleMaps.js'
+import { geocodeAddress } from './googleMaps.js'
 import './TripPlanner.css'
 
 const PLACES = [
@@ -207,51 +207,68 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
             : 'A simulated Columbus to Cleveland drive. Switch to Live forecast to search any place.'}
         </p>
 
-        {/* Clean Integrated Trip Capsule Form */}
-        <form onSubmit={submit} className="trip-capsule-form">
+        {/* Mode Selector Pill Strip */}
+        <div className="planner-mode-bar">
           <fieldset className="capsule-mode-picker" disabled={busy}>
             <legend className="sr-only">Data mode</legend>
             <button type="button" aria-pressed={form.mode === 'demo'} onClick={() => changeMode('demo')}>
+              <span className="mode-dot" aria-hidden="true" />
               Simulated
             </button>
             <button type="button" aria-pressed={form.mode === 'live'} onClick={() => changeMode('live')}>
+              <span className="mode-dot live" aria-hidden="true" />
               Live forecast
             </button>
           </fieldset>
+        </div>
 
+        {/* Clean Integrated Trip Capsule Form */}
+        <form onSubmit={submit} className="trip-capsule-form">
           <div className="capsule-locations">
-            {form.mode === 'demo' ? <>
-              <label className="capsule-input-pair">
-                <span className="field-hint">From</span>
-                <select value={form.origin} disabled>
-                  {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
-                </select>
-              </label>
-              <span className="capsule-divider" aria-hidden="true">→</span>
-              <label className="capsule-input-pair">
-                <span className="field-hint">To</span>
-                <select value={form.destination} disabled>
-                  {PLACES.map(place => <option key={place.name}>{place.name}</option>)}
-                </select>
-              </label>
-            </> : mapsKey() ? <>
-              <PlaceField hint="From" value={form.origin} disabled={busy} onText={text => editPlace('origin', text)} onPlace={place => choosePlace('origin', place)} />
-              <span className="capsule-divider" aria-hidden="true">→</span>
-              <PlaceField hint="To" value={form.destination} disabled={busy} onText={text => editPlace('destination', text)} onPlace={place => choosePlace('destination', place)} />
-            </> : <p className="place-key-note">Add VITE_GOOGLE_MAPS_API_KEY to Frontend/.env, enable Maps JavaScript, Places, Geocoding, and Directions, then restart the site.</p>}
+            {form.mode === 'demo' ? (
+              <>
+                <div className="place-field-wrapper">
+                  <label className="capsule-input-pair">
+                    <span className="field-hint">From</span>
+                    <select value={form.origin} disabled onChange={event => update('origin', event.target.value)}>
+                      {PLACES.map(place => <option key={place.name} value={place.name}>{place.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <span className="capsule-arrow" aria-hidden="true">→</span>
+                <div className="place-field-wrapper">
+                  <label className="capsule-input-pair">
+                    <span className="field-hint">To</span>
+                    <select value={form.destination} disabled onChange={event => update('destination', event.target.value)}>
+                      {PLACES.map(place => <option key={place.name} value={place.name}>{place.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </>
+            ) : (
+              <>
+                <PlaceField hint="From" value={form.origin} disabled={busy} onText={text => editPlace('origin', text)} onPlace={place => choosePlace('origin', place)} />
+                <span className="capsule-arrow" aria-hidden="true">→</span>
+                <PlaceField hint="To" value={form.destination} disabled={busy} onText={text => editPlace('destination', text)} onPlace={place => choosePlace('destination', place)} />
+              </>
+            )}
           </div>
+
+          <div className="capsule-v-divider" aria-hidden="true" />
 
           <div className="capsule-times">
             <label className="capsule-time-input">
-              <span className="field-hint">Leave window</span>
+              <span className="field-hint">Leave</span>
               <input type="datetime-local" required value={form.start} disabled={busy} onChange={event => update('start', event.target.value)} />
             </label>
-            <span className="capsule-dash">–</span>
+            <span className="capsule-dash" aria-hidden="true">–</span>
             <label className="capsule-time-input">
               <span className="field-hint">Until</span>
               <input type="datetime-local" required value={form.end} disabled={busy} onChange={event => update('end', event.target.value)} />
             </label>
           </div>
+
+          <div className="capsule-v-divider" aria-hidden="true" />
 
           <label className="capsule-alt-check">
             <input type="checkbox" checked={form.alternatives} disabled={busy} onChange={event => update('alternatives', event.target.checked)} />

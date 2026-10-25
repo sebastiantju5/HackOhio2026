@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { LEVELS } from './format.js'
-import { loadGoogleMaps, mapsKey } from './googleMaps.js'
+import { isGoogleMapsAuthFailed, loadGoogleMaps, mapsKey, onGoogleMapsAuthFailure } from './googleMaps.js'
 
 const latLng = coordinates => [coordinates[1], coordinates[0]]
 
-function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace }) {
+function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace, onAuthError }) {
   const container = useRef(null)
   const map = useRef(null)
   const drawn = useRef([])
@@ -14,32 +14,53 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
   const [mapReady, setMapReady] = useState(false)
 
   function clearDrawn() {
-    drawn.current.forEach((item) => item.setMap(null))
+    drawn.current.forEach((item) => {
+      try { item.setMap(null) } catch {
+        // Ignore
+      }
+    })
     drawn.current = []
   }
 
   useEffect(() => {
     let cancelled = false
+    const unsubscribe = onGoogleMapsAuthFailure(() => {
+      if (!cancelled) {
+        onAuthError?.()
+      }
+    })
+
+    if (isGoogleMapsAuthFailed()) {
+      onAuthError?.()
+      return () => unsubscribe()
+    }
+
     loadGoogleMaps().then((google) => {
       if (cancelled || !container.current) return
-      map.current = new google.maps.Map(container.current, {
-        center: { lat: 39.96, lng: -82.99 },
-        zoom: 6,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      })
-      setMapReady(true)
-      setMapError('')
-    }).catch((error) => {
-      if (!cancelled) setMapError(error.message)
+      try {
+        map.current = new google.maps.Map(container.current, {
+          center: { lat: 39.96, lng: -82.99 },
+          zoom: 6,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        })
+        setMapReady(true)
+        setMapError('')
+      } catch {
+        if (!cancelled) onAuthError?.()
+      }
+    }).catch(() => {
+      if (!cancelled) onAuthError?.()
     })
+
     return () => {
       cancelled = true
+      unsubscribe()
       clearDrawn()
       map.current = null
     }
-  }, [])
+  }, [onAuthError])
 
   useEffect(() => {
     const google = window.google
@@ -53,6 +74,7 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
       drawn.current.push(line)
       return line
     }
+
     addPath(route.geometry.coordinates, { strokeColor: '#fbf9ef', strokeWeight: 12, strokeOpacity: 0.95 })
     route.segments.forEach((segment, index) => {
       const level = candidate.segmentLevels[index]
@@ -64,6 +86,7 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
       })
       line.addListener('click', () => onSelect(index))
     })
+
     route.checkpoints.forEach((point, index) => {
       const level = candidate.checkpoints[index].level
       const endpoint = index === 0 || index === route.checkpoints.length - 1
@@ -78,6 +101,7 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
       marker.addListener('click', () => onSelect(index))
       drawn.current.push(marker)
     })
+
     const selected = route.checkpoints[selectedPoint]
     if (selected) {
       drawn.current.push(new google.maps.Circle({
@@ -93,43 +117,48 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
     if (!bounds.isEmpty()) map.current.fitBounds(bounds, 55)
   }, [mapReady, route, candidate, selectedPoint, onSelect, origin, destination])
 
+  // Direct line preview without calling legacy DirectionsService (which throws REQUEST_DENIED)
   useEffect(() => {
     const google = window.google
     if (!mapReady || !map.current || !google?.maps || route) return undefined
     if (!originPlace?.coordinates || !destinationPlace?.coordinates) return undefined
-    let cancelled = false
-    new google.maps.DirectionsService().route({
-      origin: { lng: originPlace.coordinates[0], lat: originPlace.coordinates[1] },
-      destination: { lng: destinationPlace.coordinates[0], lat: destinationPlace.coordinates[1] },
-      travelMode: google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-      if (cancelled || status !== 'OK' || !result?.routes?.[0]) return
-      clearDrawn()
-      const path = result.routes[0].overview_path
-      drawn.current.push(new google.maps.Polyline({
-        path,
-        map: map.current,
-        strokeColor: '#254d3a',
-        strokeWeight: 5,
-      }))
-      const bounds = new google.maps.LatLngBounds()
-      path.forEach((point) => bounds.extend(point))
-      map.current.fitBounds(bounds, 55)
+    clearDrawn()
+    const path = [
+      { lat: originPlace.coordinates[1], lng: originPlace.coordinates[0] },
+      { lat: destinationPlace.coordinates[1], lng: destinationPlace.coordinates[0] },
+    ]
+    const bounds = new google.maps.LatLngBounds()
+    path.forEach((pt) => bounds.extend(pt))
+    const line = new google.maps.Polyline({
+      path,
+      map: map.current,
+      strokeColor: '#254d3a',
+      strokeWeight: 4,
+      strokeOpacity: 0.8,
     })
-    return () => {
-      cancelled = true
-    }
+    drawn.current.push(line)
+    map.current.fitBounds(bounds, 65)
   }, [mapReady, route, originPlace, destinationPlace])
 
-  return <div className="map-wrap">
-    <div ref={container} className="route-map" role="region" aria-label="Google map of the route. Select numbered checkpoints, or use the checkpoint list below." />
-    {mapError && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>The map needs an API key.</h2><p>{mapError}</p></div>}
-    {!mapError && !route && !(originPlace?.coordinates && destinationPlace?.coordinates) && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>A little foresight.<br />A better drive.</h2><p>Choose a starting point and a destination anywhere, then analyze the trip.</p></div>}
-    <div className="map-legend" aria-label="Exposure legend">{Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}</div>
-  </div>
+  return (
+    <div className="map-wrap">
+      <div ref={container} className="route-map" role="region" aria-label="Google map of the route. Select numbered checkpoints, or use the checkpoint list below." />
+      {mapError && <div className="map-empty"><span className="mini-label">MAP NOTICE</span><h2>Unable to load Google Maps.</h2><p>{mapError}</p></div>}
+      {!mapError && !route && !(originPlace?.coordinates && destinationPlace?.coordinates) && (
+        <div className="map-empty">
+          <span className="mini-label">OHIO WEATHER CORRIDOR</span>
+          <h2>A little foresight.<br />A better drive.</h2>
+          <p>Choose a starting point and a destination anywhere, then evaluate arrival weather.</p>
+        </div>
+      )}
+      <div className="map-legend" aria-label="Exposure legend">
+        {Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}
+      </div>
+    </div>
+  )
 }
 
-function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination }) {
+function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, destination, originPlace, destinationPlace }) {
   const container = useRef(null)
   const map = useRef(null)
   const layers = useRef(null)
@@ -141,7 +170,8 @@ function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, de
     map.current = instance
     L.control.zoom({ position: 'bottomright' }).addTo(instance)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+      maxZoom: 18,
     }).on('tileerror', () => setTileIssue(true)).addTo(instance)
     layers.current = L.layerGroup().addTo(instance)
     highlight.current = L.layerGroup().addTo(instance)
@@ -154,6 +184,16 @@ function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, de
     if (!map.current || !route) return
     map.current.fitBounds(L.latLngBounds(route.geometry.coordinates.map(latLng)), { padding: [55, 55], maxZoom: 9 })
   }, [route])
+
+  // Direct line preview between origin and destination before route analysis is run
+  useEffect(() => {
+    if (!map.current || !layers.current || route) return
+    if (!originPlace?.coordinates || !destinationPlace?.coordinates) return
+    layers.current.clearLayers()
+    const coords = [latLng(originPlace.coordinates), latLng(destinationPlace.coordinates)]
+    L.polyline(coords, { color: '#254d3a', weight: 4, opacity: 0.8, dashArray: '6 8' }).addTo(layers.current)
+    map.current.fitBounds(L.latLngBounds(coords), { padding: [65, 65], maxZoom: 9 })
+  }, [route, originPlace, destinationPlace])
 
   useEffect(() => {
     if (!layers.current) return
@@ -186,14 +226,36 @@ function LeafletRouteMap({ route, candidate, selectedPoint, onSelect, origin, de
     if (point) L.circleMarker(latLng(point.coordinates), { radius: 19, weight: 2, color: '#203f31', fill: false, interactive: false }).addTo(highlight.current)
   }, [selectedPoint, route])
 
-  return <div className="map-wrap">
-    <div ref={container} className="route-map" role="region" aria-label="Interactive route map. Select numbered checkpoints, or use the checkpoint list below." />
-    {!route && <div className="map-empty"><span className="mini-label">OHIO WEATHER CORRIDOR</span><h2>A little foresight.<br />A better drive.</h2><p>Plan a trip to see conditions along the way.</p></div>}
-    {tileIssue && <p className="tile-warning" role="status">Some map tiles are unavailable. Checkpoints and route geometry remain interactive.</p>}
-    <div className="map-legend" aria-label="Exposure legend">{Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}</div>
-  </div>
+  return (
+    <div className="map-wrap">
+      <div ref={container} className="route-map" role="region" aria-label="Interactive route map. Select numbered checkpoints, or use the checkpoint list below." />
+      {!route && !(originPlace?.coordinates && destinationPlace?.coordinates) && (
+        <div className="map-empty">
+          <span className="mini-label">OHIO WEATHER CORRIDOR</span>
+          <h2>A little foresight.<br />A better drive.</h2>
+          <p>Plan a trip to see conditions along the way.</p>
+        </div>
+      )}
+      {tileIssue && <p className="tile-warning" role="status">Some map tiles are unavailable. Checkpoints and route geometry remain interactive.</p>}
+      <div className="map-legend" aria-label="Exposure legend">
+        {Object.entries(LEVELS).map(([key, value]) => <span key={key}><i style={{ background: value.color }} />{value.label}</span>)}
+      </div>
+    </div>
+  )
 }
 
 export default function RouteMap(props) {
-  return mapsKey() ? <GoogleRouteMap {...props} /> : <LeafletRouteMap {...props} />
+  const [authError, setAuthError] = useState(() => isGoogleMapsAuthFailed())
+
+  useEffect(() => {
+    return onGoogleMapsAuthFailure(() => setAuthError(true))
+  }, [])
+
+  const canUseGoogle = Boolean(mapsKey()) && !authError
+
+  return canUseGoogle ? (
+    <GoogleRouteMap {...props} onAuthError={() => setAuthError(true)} />
+  ) : (
+    <LeafletRouteMap {...props} />
+  )
 }
