@@ -93,34 +93,6 @@ function GoogleRouteMap({ route, candidate, selectedPoint, onSelect, origin, des
     if (!bounds.isEmpty()) map.current.fitBounds(bounds, 55)
   }, [mapReady, route, candidate, selectedPoint, onSelect, origin, destination])
 
-  useEffect(() => {
-    const google = window.google
-    if (!mapReady || !map.current || !google?.maps || route) return undefined
-    if (!originPlace?.coordinates || !destinationPlace?.coordinates) return undefined
-    let cancelled = false
-    new google.maps.DirectionsService().route({
-      origin: { lng: originPlace.coordinates[0], lat: originPlace.coordinates[1] },
-      destination: { lng: destinationPlace.coordinates[0], lat: destinationPlace.coordinates[1] },
-      travelMode: google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-      if (cancelled || status !== 'OK' || !result?.routes?.[0]) return
-      clearDrawn()
-      const path = result.routes[0].overview_path
-      drawn.current.push(new google.maps.Polyline({
-        path,
-        map: map.current,
-        strokeColor: '#254d3a',
-        strokeWeight: 5,
-      }))
-      const bounds = new google.maps.LatLngBounds()
-      path.forEach((point) => bounds.extend(point))
-      map.current.fitBounds(bounds, 55)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [mapReady, route, originPlace, destinationPlace])
-
   return <div className="map-wrap">
     <div ref={container} className="route-map" role="region" aria-label="Google map of the route. Select numbered checkpoints, or use the checkpoint list below." />
     {mapError && <div className="map-empty"><span className="mini-label">GOOGLE MAPS</span><h2>The map needs an API key.</h2><p>{mapError}</p></div>}

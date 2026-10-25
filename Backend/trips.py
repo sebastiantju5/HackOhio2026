@@ -26,7 +26,7 @@ PLACES = [
 def config():
     return jsonify({"places": PLACES, "routingProvider": routing_provider(), "demo": {
         "origin": PLACES[0], "destination": PLACES[1], "description": scenario()["description"]},
-        "limits": {"windowMinutes": 120, "routeHours": 4, "departureStepMinutes": 5, "checkpointMinutes": 15}})
+        "limits": {"departureStepMinutes": 5, "checkpointMinutes": 15}})
 
 
 @trips.post("/api/trips/analyze")

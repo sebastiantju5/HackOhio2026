@@ -44,8 +44,8 @@ def validate_request(data, now=None):
     if mode not in ("demo", "live"):
         raise TripError("Choose demo or live mode.")
     start, end = parse_time(data.get("departureStart")), parse_time(data.get("departureEnd"))
-    if not 0 <= (end - start).total_seconds() <= 7200:
-        raise TripError("The departure window must be ordered and at most two hours wide.")
+    if end < start:
+        raise TripError("The ending time must be at or after the starting time.")
     zone = data.get("timeZone", "America/New_York")
     try:
         ZoneInfo(zone)
@@ -96,8 +96,8 @@ def sample_route(route, interval_seconds=900):
     coords, durations = route["geometry"]["coordinates"], route["edgeDurationsSeconds"]
     if len(coords) < 2 or len(durations) != len(coords) - 1:
         raise TripError("Routing provider returned mismatched geometry and edge durations.")
-    if not all(finite_number(t) and t >= 0 for t in durations) or not 0 < sum(durations) <= 14400:
-        raise TripError("Choose a route of at most four hours with valid travel times.")
+    if not all(finite_number(t) and t >= 0 for t in durations) or sum(durations) <= 0:
+        raise TripError("The routing provider returned invalid travel times.")
     cumulative, distances = [0.0], [0.0]
     for i, duration in enumerate(durations):
         cumulative.append(cumulative[-1] + duration)

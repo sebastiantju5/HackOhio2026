@@ -144,11 +144,13 @@ class ValidationAndApiTests(unittest.TestCase):
     def test_validation_rejects_bad_requests(self):
         bad = [None, [], payload() | {"departureStart": "2026-10-24T17:00"}, payload() | {"timeZone": "invalid"},
                payload() | {"departureEnd": iso(START - timedelta(minutes=1))},
-               payload() | {"departureEnd": iso(START + timedelta(hours=3))}, payload() | {"includeAlternatives": "false"},
+               payload() | {"includeAlternatives": "false"},
                payload() | {"origin": {"coordinates": [True, 40]}}, payload() | {"dataMode": "recorded"}]
         for item in bad:
             with self.subTest(item=item):
                 self.assertEqual(self.client.post('/api/trips/analyze', json=item).status_code, 400)
+        wide = self.client.post('/api/trips/analyze', json=payload() | {"departureEnd": iso(START + timedelta(hours=3))})
+        self.assertEqual(wide.status_code, 200)
 
     def test_startup_and_demo_do_not_access_database(self):
         with patch("app.connect", side_effect=AssertionError("No DB should be used")):

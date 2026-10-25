@@ -203,7 +203,7 @@ export default function TripPlanner({ session, onAccount, onLogout }) {
         </h1>
         <p className="hero-sub">
           {form.mode === 'live'
-            ? 'Type any starting point and destination. Forecasts follow the drive for trips up to four hours.'
+            ? 'Type any starting point and destination. Forecasts follow the drive.'
             : 'A simulated Columbus to Cleveland drive. Switch to Live forecast to search any place.'}
         </p>
 
