@@ -150,3 +150,49 @@ def validate_vehicle(data):
         raise TripError("Enter estimated highway fuel economy between 5 and 150 MPG.")
     return {**vehicle, "mpg": float(mpg), "mpgSource": "Your highway MPG estimate",
             "epaId": None, "configuration": "Manually entered", "tankGallons": float(capacity)}
+
+
+PRICE_SERIES = {
+    "EMM_EPMR_PTE_SOH_DPG": ("Regular Gasoline", "Ohio"),
+    "EMM_EPMM_PTE_SOH_DPG": ("Midgrade Gasoline", "Ohio"),
+    "EMM_EPMP_PTE_SOH_DPG": ("Premium Gasoline", "Ohio"),
+    "EMD_EPD2DXL0_PTE_NUS_DPG": ("Diesel", "U.S."),
+}
+price_cache = BoundedCache(maximum=4, ttl=6 * 3600)
+
+
+def retail_fuel_prices():
+    """Latest EIA weekly retail averages. Gasoline is Ohio; diesel is the U.S. average."""
+    def load():
+        query = urlencode([
+            ("api_key", "DEMO_KEY"),
+            ("frequency", "weekly"),
+            ("data[0]", "value"),
+            ("sort[0][column]", "period"),
+            ("sort[0][direction]", "desc"),
+            ("length", "8"),
+            *[("facets[series][]", series) for series in PRICE_SERIES],
+        ])
+        payload = request_json(f"https://api.eia.gov/v2/petroleum/pri/gnd/data/?{query}", "EIA")
+        prices = {}
+        period = None
+        for row in payload.get("response", {}).get("data", []):
+            mapped = PRICE_SERIES.get(row.get("series"))
+            if not mapped or mapped[0] in prices:
+                continue
+            try:
+                value = float(row["value"])
+            except (TypeError, ValueError):
+                continue
+            if not 0.5 <= value <= 20:
+                continue
+            prices[mapped[0]] = {"dollarsPerGallon": round(value, 3), "area": mapped[1]}
+            period = period or row.get("period")
+        if "Regular Gasoline" not in prices:
+            raise ProviderError("EIA did not return a gasoline price.")
+        return {"period": period, "prices": prices, "source": "EIA weekly retail average"}
+
+    try:
+        return price_cache.get_or_load("retail", load)
+    except ProviderError:
+        return None

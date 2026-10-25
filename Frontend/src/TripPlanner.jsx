@@ -85,8 +85,50 @@ async function getAnalysis(form, signal) {
   return data
 }
 
-function Metric({ label, children }) {
-  return <div className="trip-metric"><span>{label}</span><strong>{children}</strong></div>
+function Metric({ label, children, note }) {
+  return <div className="trip-metric"><span>{label}</span><strong>{children}</strong>{note && <small>{note}</small>}</div>
+}
+
+function dollars(amount) {
+  return `$${amount.toFixed(2)}`
+}
+
+function driveFuel(route, vehicle, fuelPrices) {
+  const mpg = Number(vehicle?.mpg)
+  if (!route || !Number.isFinite(mpg) || mpg <= 0) return null
+  const gallons = Math.round(route.distanceMeters / 1609.344 / mpg * 10) / 10
+  const quote = fuelPrices?.prices?.[vehicle.fuelType]
+  return { gallons, cost: quote ? gallons * quote.dollarsPerGallon : null, quote, mpg }
+}
+
+function fahrenheit(celsius) {
+  return Math.round(celsius * 9 / 5 + 32)
+}
+
+function summarizeDrive(candidate, timeZone) {
+  const readings = (candidate?.checkpoints || []).map(point => point.weather).filter(Boolean)
+  if (!readings.length) return 'Forecast coverage is incomplete for this departure, so the weather along the drive is not available yet.'
+  const numbers = (key) => readings.map(reading => reading[key]).filter(Number.isFinite)
+  const temps = numbers('temperatureC')
+  const maxRain = Math.max(0, ...numbers('rainMmPerHour'))
+  const maxWind = Math.max(0, ...numbers('crosswindGustKph')) / 1.609344
+  const visibility = numbers('visibilityM')
+  const minVisibility = visibility.length ? Math.min(...visibility) / 1609.344 : null
+  const conditions = []
+  if (maxRain >= 7.5) conditions.push('heavy rain')
+  else if (maxRain >= 1) conditions.push('light rain')
+  else if (maxRain > 0.1) conditions.push('a little rain')
+  if (maxWind >= 28) conditions.push('strong crosswinds')
+  else if (maxWind >= 15) conditions.push('breezy crosswinds')
+  if (minVisibility != null && minVisibility < 2) conditions.push('low visibility')
+  else if (minVisibility != null && minVisibility < 6) conditions.push('reduced visibility')
+  const outlook = candidate.level === 'higher' ? 'Rough weather on part of this drive' : candidate.level === 'caution' ? 'Mostly manageable, with a few cautions' : candidate.level === 'unknown' ? 'Only part of this drive has a forecast' : 'A mostly calm drive'
+  const listed = conditions.length <= 1 ? conditions[0] : conditions.length === 2 ? `${conditions[0]} and ${conditions[1]}` : `${conditions.slice(0, -1).join(', ')}, and ${conditions.at(-1)}`
+  const weather = conditions.length === 0 ? 'no notable rain, crosswind, or visibility problems' : `expect ${listed}`
+  const temperature = !temps.length ? '' : Math.min(...temps) === Math.max(...temps) ? `, around ${fahrenheit(temps[0])}°F` : `, ${fahrenheit(Math.min(...temps))}–${fahrenheit(Math.max(...temps))}°F`
+  const exposure = candidate.higherMinutes > 0 ? ` Higher exposure lasts about ${Math.round(candidate.higherMinutes)} minutes.` : ''
+  const when = candidate.departure ? `Leaving at ${clock(candidate.departure, timeZone)}. ` : ''
+  return `${when}${outlook}: ${weather}${temperature}.${exposure}`
 }
 
 export default function TripPlanner({ session, onAccount, onLogout: _onLogout, vehicle, vehicleError, vehicleReady }) {
@@ -99,6 +141,7 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
   const [_routingProvider, setRoutingProvider] = useState('OSRM')
+  const [fuelPrices, setFuelPrices] = useState(null)
   const [stopPlan, setStopPlan] = useState(null)
   const request = useRef(null)
   const initialForm = useRef(form)
@@ -115,7 +158,10 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
   useEffect(() => {
     const controller = new AbortController()
     request.current = controller
-    fetch('/api/trips/config', { signal: controller.signal }).then(response => response.json()).then(data => setRoutingProvider(data.routingProvider || 'OSRM')).catch(() => {})
+    fetch('/api/trips/config', { signal: controller.signal }).then(response => response.json()).then(data => {
+      setRoutingProvider(data.routingProvider || 'OSRM')
+      if (data.fuelPrices) setFuelPrices(data.fuelPrices)
+    }).catch(() => {})
     getAnalysis(initialForm.current, controller.signal).then(accept).catch(err => {
       if (err.name !== 'AbortError') setError(err instanceof TypeError ? 'Cannot reach the planner. Start the Flask backend on port 5001, then try again.' : err.message)
     }).finally(() => { if (!controller.signal.aborted) setBusy(false) })
@@ -212,12 +258,7 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
   } : candidate
 
   const recommended = analysis?.candidates.find(item => item.id === analysis.recommendation?.candidateId)
-
-  function useRecommendation() {
-    if (!recommended) return
-    setRouteId(recommended.routeId)
-    setDepartureIndex(analysis.candidates.filter(item => item.routeId === recommended.routeId).findIndex(item => item.id === recommended.id))
-  }
+  const fuel = driveFuel(route, vehicle, fuelPrices)
 
   return (
     <div className="planner-app">
@@ -358,16 +399,15 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
               <p>{route ? `${miles(route.distanceMeters)} miles · ${duration(route.durationSeconds)} travel time` : 'Select endpoints and evaluate arrival weather'}</p>
             </div>
 
-            <div className="header-badges-wrap">
-              {recommended && (
-                <button type="button" className="pinned-pill-tag" onClick={useRecommendation} title="Jump to optimal departure">
-                  OPTIMAL: {clock(recommended.departure, analysis?.timeZone)} ET
-                </button>
-              )}
-              <span className={`data-mode-tag ${form.mode === 'live' ? 'live' : ''}`}>
-                <i /> {form.mode === 'live' ? 'LIVE FORECAST' : 'SIMULATED'}
-              </span>
-            </div>
+            {recommended && (
+              <div className="header-recommendation">
+                <span className="rec-kicker">Recommended departure window</span>
+                <p>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</p>
+                {analysis.recommendation?.minutesSaved > 0 && (
+                  <p>Saves {analysis.recommendation.minutesSaved} minutes of storm exposure compared to earlier timing.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Compared Alternatives */}
@@ -426,6 +466,12 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
             <Metric label="Peak Condition">
               {displayCandidate?.level && LEVELS[displayCandidate.level] ? LEVELS[displayCandidate.level].label : '—'}
             </Metric>
+            <Metric label="Expected fuel" note={fuel ? `${fuel.mpg} highway MPG` : ''}>
+              {fuel ? `${fuel.gallons.toFixed(1)} gal` : '—'}
+            </Metric>
+            <Metric label="Expected gas cost" note={fuel?.quote ? `${fuel.quote.area} avg $${fuel.quote.dollarsPerGallon.toFixed(3)}/gal` : ''}>
+              {fuel?.cost != null ? dollars(fuel.cost) : '—'}
+            </Metric>
           </div>
 
           {/* Interactive Timeline Scrubber */}
@@ -437,24 +483,11 @@ export default function TripPlanner({ session, onAccount, onLogout: _onLogout, v
               onChange={setDepartureIndex}
               timeZone={analysis?.timeZone}
             />
+            {displayCandidate && <section className="drive-weather" aria-label="Weather along this drive">
+              <span className="mini-label">Along this drive</span>
+              <p>{summarizeDrive(displayCandidate, analysis?.timeZone)}</p>
+            </section>}
 
-            {recommended && (
-              <div className="bone-rec-bar">
-                <span className="rec-star-quiet" aria-hidden="true">★</span>
-                <div className="rec-bar-content">
-                  <span className="rec-kicker">RECOMMENDED DEPARTURE WINDOW</span>
-                  <h4>Leave around {clock(recommended.departure, analysis?.timeZone)} ET for best corridor weather</h4>
-                  <p>
-                    {analysis.recommendation?.minutesSaved > 0
-                      ? `Saves ${analysis.recommendation.minutesSaved} minutes of storm exposure compared to earlier timing.`
-                      : 'Offers the lowest risk profile and smoothest conditions along the Ohio corridor.'}
-                  </p>
-                </div>
-                <button type="button" className="rec-lock-btn" onClick={useRecommendation}>
-                  Jump to {clock(recommended.departure, analysis?.timeZone)}
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Weather-Aware Break Stops Module */}

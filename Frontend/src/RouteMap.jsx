@@ -10,8 +10,10 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
   const container = useRef(null)
   const map = useRef(null)
   const drawn = useRef([])
+  const onAuthErrorRef = useRef(onAuthError)
   const [mapError, setMapError] = useState('')
   const [mapReady, setMapReady] = useState(false)
+  onAuthErrorRef.current = onAuthError
 
   function clearDrawn() {
     drawn.current.forEach((item) => {
@@ -25,13 +27,11 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
   useEffect(() => {
     let cancelled = false
     const unsubscribe = onGoogleMapsAuthFailure(() => {
-      if (!cancelled) {
-        onAuthError?.()
-      }
+      if (!cancelled) onAuthErrorRef.current?.()
     })
 
     if (isGoogleMapsAuthFailed()) {
-      onAuthError?.()
+      onAuthErrorRef.current?.()
       return () => unsubscribe()
     }
 
@@ -48,10 +48,10 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
         setMapReady(true)
         setMapError('')
       } catch {
-        if (!cancelled) onAuthError?.()
+        if (!cancelled) onAuthErrorRef.current?.()
       }
     }).catch(() => {
-      if (!cancelled) onAuthError?.()
+      if (!cancelled) onAuthErrorRef.current?.()
     })
 
     return () => {
@@ -59,8 +59,9 @@ function GoogleRouteMap({ route, candidate, onSelect, originPlace, destinationPl
       unsubscribe()
       clearDrawn()
       map.current = null
+      setMapReady(false)
     }
-  }, [onAuthError])
+  }, [])
 
   useEffect(() => {
     const google = window.google
